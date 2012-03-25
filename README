@@ -1,0 +1,79 @@
+NAME
+    IPC::Transit - A framework for high performance message passing
+
+    ** DEVELOPER RELEASE **
+
+SYNOPSIS
+      use strict;
+      use IPC::Transit;
+      IPC::Transit::send(qname => 'test', message => { a => 'b' });
+
+      #...the same or a different process on the same machine
+      my $message = IPC::Transit::receive(qname => 'test');
+
+DESCRIPTION
+    ** DEVELOPER RELEASE **
+
+    This is a proof of concept.
+
+    The file and serialization will not be considered set until version 0.1.
+    More to the point, they will DEFINITELY change after this release.
+
+    This queue framework has the following goals:
+
+    *   Serverless
+
+    *   High Throughput
+
+    *   Usually Low Latency
+
+    *   Relatively Good Reliability
+
+    *   CPU and Memory efficient
+
+    *   Cross UNIX Implementation
+
+    *   Multiple Language Compability
+
+    *   Very few module dependencies
+
+    *   Supports old version of Perl
+
+    *   Feature stack is modular and optional
+
+    This queue framework has the following anti-goals:
+
+    *   Guaranteed Delivery
+
+SEE ALSO
+    Todo
+
+TODO
+    In process delivery.
+
+    Cross box delivery.
+
+    Arbitrary serialization.
+
+    Queue handling facilities.
+
+    Much else
+
+BUGS
+    Patches, flames, opinions, enhancement ideas are all welcome.
+
+    I am not satisfied with not supporting Windows, but it is considered
+    secondary. I am open to the possibility of adding abstractions for this
+    kind of support as long as it doesn't greatly affect the primary goals.
+
+COPYRIGHT
+    Copyright (c) 2012, Dana M. Diederich. All Rights Reserved.
+
+LICENSE
+    This module is free software. It may be used, redistributed and/or
+    modified under the terms of the Perl Artistic License (see
+    http://www.perl.com/perl/misc/Artistic.html)
+
+AUTHOR
+    Dana M. Diederich <diederich@gmail.com>
+
