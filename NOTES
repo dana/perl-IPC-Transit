@@ -2,4 +2,51 @@ Totally random thoughts and stream of consciousness.
 
 This stuff might be inaccurate, out of date, wrong and/or crazy.
 
+Serialization
 
+
+First, we have, in ascii, an integer followed by a colon.  This is,
+excluding these characters, how long the header is.  Meaning, if you
+skip that many bytes, you'll be pointing to the first byte of the actual
+message.
+
+So the serialized message has the following parts
+
+header length
+header
+message
+
+Example:
+
+header length:3:
+header:xyz
+message:{"a":"b"}
+
+Full serialized thing:
+3:xyz{"a":"b"}
+
+IPC::Transit::Serialize
+
+freeze()
+
+thaw()
+takes: fully serialized message
+returns: message and header info
+
+
+
+
+
+
+The Message:
+Must be a hash reference.
+
+Only the .transit key is reserved.
+By default, it is not returned.
+Maybe some stuff it has:
+.transit => {
+    checksum => $sum,
+    checksum_type => $what kind of crypto,
+    send_ts => $epoch_time,
+    receive_ts => $epoch_time,
+},
