@@ -28,10 +28,14 @@ Full serialized thing:
 IPC::Transit::Serialize
 
 freeze()
+takes:  message hash
+        args to control freeze
+returns: fully serialized message
 
 thaw()
 takes: fully serialized message
-returns: message and header info
+returns:    message
+            header info
 
 
 
