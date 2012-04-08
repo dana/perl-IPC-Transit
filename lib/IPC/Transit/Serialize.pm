@@ -1,6 +1,7 @@
 package IPC::Transit::Serialize;
 
 use strict;use warnings;
+use Data::Dumper;
 
 sub
 freeze {
@@ -10,7 +11,7 @@ freeze {
             if scalar @args % 2;
         %args = @args;
     }
-
+    return Dumper $args{message};
 }
 
 sub
@@ -21,7 +22,12 @@ thaw {
             if scalar @args % 2;
         %args = @args;
     }
-
+    eval {
+        my $VAR1;
+        eval $args{serialized_data};
+        $args{message} = $VAR1;
+    };
+    return $args{message};
 }
 
 1;

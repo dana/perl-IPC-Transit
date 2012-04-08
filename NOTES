@@ -4,38 +4,24 @@ This stuff might be inaccurate, out of date, wrong and/or crazy.
 
 Serialization
 
+Auto-detected.
 
-First, we have, in ascii, an integer followed by a colon.  This is,
-excluding these characters, how long the header is.  Meaning, if you
-skip that many bytes, you'll be pointing to the first byte of the actual
-message.
+YAML: starts with ---
+JSON: Starts with {
+Data::Dumper: Starts with $VAR1 = 
+Storable: Looks like it starts with Octal 003404
 
-So the serialized message has the following parts
-
-header length
-header
-message
-
-Example:
-
-header length:3:
-header:xyz
-message:{"a":"b"}
-
-Full serialized thing:
-3:xyz{"a":"b"}
 
 IPC::Transit::Serialize
 
 freeze()
-takes:  message hash
+takes:  message
         args to control freeze
 returns: fully serialized message
 
 thaw()
 takes: fully serialized message
 returns:    message
-            header info
 
 
 

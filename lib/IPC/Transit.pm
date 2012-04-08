@@ -3,6 +3,7 @@ package IPC::Transit;
 use strict;use warnings;
 use Data::Dumper;
 use IPC::Transit::Internal;
+use IPC::Transit::Serialize;
 
 use vars qw(
     $VERSION
@@ -38,7 +39,7 @@ send {
         if ref $message ne 'HASH';
 
     eval {
-        $args{serialized_message} = Data::Dumper::Dumper $message;
+        $args{serialized_message} = IPC::Transit::Serialize::freeze(%args);
     };
     my $to_queue = IPC::Transit::Internal::_initialize_queue(%args);
     return $to_queue->snd(1,$args{serialized_message}, IPC::Transit::Internal::_get_flags('nonblocks'));
@@ -58,16 +59,12 @@ receive {
     die "IPC::Transit::receive: parameter 'qname' must be a scalar"
         if ref $qname;
     my $from_queue = IPC::Transit::Internal::_initialize_queue(%args);
-    my $in;
-    my $ret = $from_queue->rcv($in, 1024000, 1, IPC::Transit::Internal::_get_flags('nowait'));
-    return undef unless $in;
-    my $message;
+    my $ret = $from_queue->rcv($args{serialized_data}, 1024000, 1, IPC::Transit::Internal::_get_flags('nowait'));
+    return undef unless $args{serialized_data};
     eval {
-        my $VAR1;
-        eval $in;
-        $message = $VAR1;
+        $args{message} = IPC::Transit::Serialize::thaw(%args);
     };
-    return $message;
+    return $args{message};
 }
 
 1;
