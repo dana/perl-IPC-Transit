@@ -2,7 +2,12 @@ package IPC::Transit::Serialize;
 
 use strict;use warnings;
 use Data::Dumper;
+use Data::Serializer::Raw;
 
+my $serializer = Data::Serializer::Raw->new(
+    serializer => 'Data::Dumper',
+    options => {},
+);
 sub
 freeze {
     my %args;
@@ -11,7 +16,8 @@ freeze {
             if scalar @args % 2;
         %args = @args;
     }
-    return Dumper $args{message};
+    my $serialized_data = $serializer->serialize($args{message});
+    return $serialized_data;
 }
 
 sub
@@ -22,10 +28,9 @@ thaw {
             if scalar @args % 2;
         %args = @args;
     }
+    my $s = $args{serialized_data};
     eval {
-        my $VAR1;
-        eval $args{serialized_data};
-        $args{message} = $VAR1;
+        $args{message} = $serializer->deserialize($s);
     };
     return $args{message};
 }
