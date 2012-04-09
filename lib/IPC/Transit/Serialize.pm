@@ -4,10 +4,12 @@ use strict;use warnings;
 use Data::Dumper;
 use Data::Serializer::Raw;
 
-my $serializer = Data::Serializer::Raw->new(
-    serializer => 'Data::Dumper',
-    options => {},
-);
+our $serializers = {
+    'Data::Dumper' => Data::Serializer::Raw->new(
+        serializer => 'Data::Dumper',
+        options => {},
+    ),
+};
 sub
 freeze {
     my %args;
@@ -16,7 +18,13 @@ freeze {
             if scalar @args % 2;
         %args = @args;
     }
-    my $serialized_data = $serializer->serialize($args{message});
+    my $serialize_with = $args{serialize_with} || 'Data::Dumper';
+    if(not $serializers->{$serialize_with}) {
+        $serializers->{$serialize_with} = Data::Serializer::Raw->new(
+            serializer => $serialize_with
+        );
+    }
+    my $serialized_data = $serialize_with . '/' . $serializers->{$serialize_with}->serialize($args{message});
     return $serialized_data;
 }
 
@@ -28,9 +36,9 @@ thaw {
             if scalar @args % 2;
         %args = @args;
     }
-    my $s = $args{serialized_data};
+    my ($serialize_with, $serialized_data) = split '\/', $args{serialized_data};
     eval {
-        $args{message} = $serializer->deserialize($s);
+        $args{message} = $serializers->{$serialize_with}->deserialize($serialized_data);
     };
     return $args{message};
 }
