@@ -19,7 +19,8 @@
             "IPC::SysV" : "0",
             "IPC::Msg" : "0",
             "POSIX" : "0",
-            "Data::Dumper" : "0"
+            "Data::Dumper" : "0",
+            "Data::Serializer" : "0"
          }
       },
       "configure" : {

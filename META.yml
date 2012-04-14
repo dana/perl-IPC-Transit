@@ -7,6 +7,7 @@ build_requires:
   IPC::Msg: 0
   POSIX: 0
   Data::Dumper: 0
+  Data::Serializer: 0
   Test::Pod: 0
 configure_requires:
   Module::Build: 0

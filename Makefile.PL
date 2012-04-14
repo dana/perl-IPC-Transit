@@ -13,10 +13,11 @@ WriteMakefile(
     NAME         => 'IPC::Transit',
     VERSION_FROM => 'lib/IPC/Transit.pm', # finds $VERSION
     PREREQ_PM    => {
-        'IPC::SysV'       => 0,
-        'IPC::Msg'        => 0,
-        'POSIX'           => 0,
-        'Data::Dumper'    => 0,
+        'IPC::SysV'        => 0,
+        'IPC::Msg'         => 0,
+        'POSIX'            => 0,
+        'Data::Dumper'     => 0,
+        'Data::Serializer' => 0,
     },
     test =>
         {TESTS => "@tests"},
