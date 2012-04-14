@@ -1,7 +1,6 @@
 package IPC::Transit::Serialize;
 
 use strict;use warnings;
-use Data::Dumper;
 use Data::Serializer::Raw;
 
 our $serializers = {
