@@ -1,0 +1,3 @@
+CPAN Testing indicates we are broken on BSD variants.  They don't seem to
+like me choosing a queue ID directly, so I have to look at moving to the
+normal, correct way of doing it, using ftok and friends perhaps.
