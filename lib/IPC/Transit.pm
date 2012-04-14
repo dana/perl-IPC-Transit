@@ -132,6 +132,8 @@ This queue framework has the following anti-goals:
 
 =head1 SEE ALSO
 
+A zillion other queueing systems.
+
 Todo
 
 =head1 TODO
