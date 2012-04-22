@@ -69,6 +69,7 @@ _load_transit_config {
     my $queues = {};
     open my $fh, '<', $cf or die "failed to open '$cf' for writing: $!\n";
     while(my $line = <$fh>) {
+        chomp $line;
         my ($qname, $qid, @others) = split ':', $line;
         $queues->{$qname} = { qid => $qid, @others };
     }
@@ -131,9 +132,12 @@ _get_queue_id {
 #gnarly looking UNIX goop hidden below
 {
 my $flags = {
-    create_ipc =>       IPC::SysV::S_IRWXU() |
-                        IPC::SysV::S_IRWXG() |
-                        IPC::SysV::S_IRWXO() |
+    create_ipc =>       IPC::SysV::S_IRUSR() |
+                        IPC::SysV::S_IWUSR() |
+                        IPC::SysV::S_IRGRP() |
+                        IPC::SysV::S_IWGRP() |
+                        IPC::SysV::S_IROTH() |
+                        IPC::SysV::S_IWOTH() |
                         IPC::SysV::IPC_CREAT(),
 
     nowait =>           IPC::SysV::IPC_NOWAIT(),
