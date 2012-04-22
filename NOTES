@@ -5,12 +5,6 @@ This stuff might be inaccurate, out of date, wrong and/or crazy.
 Serialization
 
 
-YAML: starts with ---
-JSON: Starts with {
-Data::Dumper: Starts with $VAR1 = 
-Storable: Looks like it starts with Octal 003404
-
-
 IPC::Transit::Serialize
 
 freeze()
@@ -21,7 +15,6 @@ returns: fully serialized message
 thaw()
 takes: fully serialized message
 returns:    message
-
 
 
 
