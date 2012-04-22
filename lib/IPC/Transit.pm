@@ -67,6 +67,17 @@ receive {
     return $args{message};
 }
 
+sub
+local_queue {
+    my %args;
+    {   my @args = @_;
+        die 'IPC::Transit::local_queue: even number of arguments required'
+            if scalar @args % 2;
+        %args = @args;
+    }
+    my $qname = $args{qname};
+}
+
 1;
 
 __END__
