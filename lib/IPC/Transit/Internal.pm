@@ -5,6 +5,7 @@ use IPC::SysV;
 use IPC::Msg;
 use POSIX;
 
+
 use vars qw(
     $config
 );
@@ -59,7 +60,7 @@ sub
 _load_transit_config {
     my $cf = _get_transit_config_file();
     if(not -r $cf) {
-        my $previous_umask = umask 0777;
+        my $previous_umask = umask 0000;
         open my $fh, '>', $cf or die "failed to open '$cf' for writing: $!\n";
         print $fh '' or die "failed to write to '$cf': $!\n";
         close $fh or die "failed to close '$cf': $!";
@@ -68,6 +69,7 @@ _load_transit_config {
     my $queues = {};
     open my $fh, '<', $cf or die "failed to open '$cf' for writing: $!\n";
     while(my $line = <$fh>) {
+        chomp $line;
         my ($qname, $qid, @others) = split ':', $line;
         $queues->{$qname} = { qid => $qid, @others };
     }
@@ -79,7 +81,7 @@ _load_transit_config {
 sub
 _write_transit_config {
     my $cf = _get_transit_config_file();
-    my $previous_umask = umask 0777;
+    my $previous_umask = umask 0000;
     _lock_config_file();
     eval {
         open my $fh, '>', $cf or die "failed to open '$cf' for writing: $!\n";
@@ -99,7 +101,7 @@ sub
 _get_queue_id {
     my %args = @_;
     my $qname = $args{qname};
-    return $config->{queues}->{$qname}
+    return $config->{queues}->{$qname}->{qid}
         if $config->{queues} and $config->{queues}->{$qname};
 
     _lock_config_file();
@@ -107,26 +109,36 @@ _get_queue_id {
         _load_transit_config();
         if($config->{queues} and $config->{queues}->{$qname}) {
             _unlock_config_file();
-            return $config->{queues}->{$qname};
+            return $config->{queues}->{$qname}->{qid};
         }
         my $next_number;
-        {   my @current_numbers = sort {$a <=> $b} values %{$config->{queues}};
-            my $highest_number = pop @current_numbers;
-            $next_number = $highest_number++;
+        if(scalar keys %{$config->{queues}}) {
+            {   my @current_numbers = sort {$a <=> $b} values %{$config->{queues}};
+                my $highest_number = pop @current_numbers;
+                $next_number = $highest_number++;
+            }
+        } else {
+            #$config->{queues}->{$qname} = { qid => 1 };
+            $next_number = 1;
         }
-        $config->{queues}->{$qname} = $next_number;
+        $config->{queues}->{$qname} = { qid => $next_number };
+        _unlock_config_file();
         _write_transit_config();
     };
 
     _unlock_config_file();
+    return $config->{queues}->{$qname}->{qid};
 }
 
 #gnarly looking UNIX goop hidden below
 {
 my $flags = {
-    create_ipc =>       IPC::SysV::S_IRWXU() |
-                        IPC::SysV::S_IRWXG() |
-                        IPC::SysV::S_IRWXO() |
+    create_ipc =>       IPC::SysV::S_IRUSR() |
+                        IPC::SysV::S_IWUSR() |
+                        IPC::SysV::S_IRGRP() |
+                        IPC::SysV::S_IWGRP() |
+                        IPC::SysV::S_IROTH() |
+                        IPC::SysV::S_IWOTH() |
                         IPC::SysV::IPC_CREAT(),
 
     nowait =>           IPC::SysV::IPC_NOWAIT(),
