@@ -122,6 +122,7 @@ _get_queue_id {
             $next_number = 1;
         }
         $config->{queues}->{$qname} = { qid => $next_number };
+        _unlock_config_file();
         _write_transit_config();
     };
 
