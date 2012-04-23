@@ -4,6 +4,9 @@ use strict;use warnings;
 use Data::Dumper;
 use IPC::Transit;
 
+BEGIN {
+    $IPC::Transit::config_file = "transit_test_$$.conf";
+};
 sub
 clear_test_queue {
     for(1..100) {
@@ -15,4 +18,8 @@ clear_test_queue {
     }
 }
 
+END {
+    unlink "/tmp/$IPC::Transit::config_file";
+    IPC::Transit::Internal::_drop_all_queues();
+};
 1;

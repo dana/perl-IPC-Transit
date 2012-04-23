@@ -8,6 +8,7 @@ use IPC::Transit::Serialize;
 use vars qw(
     $VERSION
     $config_file $config_dir
+    $local_queues
 );
 
 $VERSION = '0.01';
@@ -38,11 +39,37 @@ send {
     die "IPC::Transit::send: parameter 'message' must be a HASH reference"
         if ref $message ne 'HASH';
 
+    if($local_queues and $local_queues->{$qname}) {
+        push @{$local_queues->{$qname}}, \%args;
+        return \%args;
+    }
+
     eval {
         $args{serialized_message} = IPC::Transit::Serialize::freeze(%args);
     };
     my $to_queue = IPC::Transit::Internal::_initialize_queue(%args);
     return $to_queue->snd(1,$args{serialized_message}, IPC::Transit::Internal::_get_flags('nonblocks'));
+}
+
+sub
+stat {
+    my %args;
+    {   my @args = @_;
+        die 'IPC::Transit::stat: even number of arguments required'
+            if scalar @args % 2;
+        %args = @args;
+    }
+    my $qname = $args{qname};
+    if($local_queues and $local_queues->{$qname}) {
+        return {
+            qnum => scalar @{$local_queues->{$qname}}
+        };
+    }
+    die "IPC::Transit::stat: parameter 'qname' required"
+        unless $qname;
+    die "IPC::Transit::stat: parameter 'qname' must be a scalar"
+        if ref $qname;
+    my $info = IPC::Transit::Internal::_stat(%args);
 }
 
 sub
@@ -58,6 +85,10 @@ receive {
         unless $qname;
     die "IPC::Transit::receive: parameter 'qname' must be a scalar"
         if ref $qname;
+    if($local_queues and $local_queues->{$qname}) {
+        my $m = shift @{$local_queues->{$qname}};
+        return $m->{message};
+    }
     my $from_queue = IPC::Transit::Internal::_initialize_queue(%args);
     my $ret = $from_queue->rcv($args{serialized_data}, 1024000, 1, IPC::Transit::Internal::_get_flags('nowait'));
     return undef unless $args{serialized_data};
@@ -76,6 +107,9 @@ local_queue {
         %args = @args;
     }
     my $qname = $args{qname};
+    $local_queues = {} unless $local_queues;
+    $local_queues->{$qname} = [];
+    return 1;
 }
 
 1;
@@ -141,19 +175,35 @@ This queue framework has the following anti-goals:
 
 =back
 
+=head1 stat
+    Returns various stats about the passed queue name, per IPC::Msg::stat:
+
+ print Dumper IPC::Transit::stat(qname => 'test');
+ $VAR1 = {
+          'ctime' => 1335141770,
+          'cuid' => 1000,
+          'lrpid' => 0,
+          'uid' => 1000,
+          'lspid' => 0,
+          'mode' => 438,
+          'qnum' => 0,
+          'cgid' => 1000,
+          'rtime' => 0,
+          'qbytes' => 16384,
+          'stime' => 0,
+          'gid' => 1000
+ }
+
+
 =head1 SEE ALSO
 
 A zillion other queueing systems.
-
-Todo
 
 =head1 TODO
 
 In process delivery.
 
 Cross box delivery.
-
-Arbitrary serialization.
 
 Queue handling facilities.
 
