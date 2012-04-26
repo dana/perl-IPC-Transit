@@ -1,10 +1,22 @@
+Message Based Programming
+
+Simple?
+
+Simple!!
+
 Basic Tenents of Message Based Programming
 
 Message Defined:
-Any complex (but 'normal') Perl data structure that starts as a hash reference
-at the top level.
+
+Arbitrarily complex
+
+'normal'
+
+Starts with hash reference
 
 Normal is defined as scalars, arrays and hashes.
+
+Like this:
 
 {   this => 'thing',
     stuff => ['x', 10, 'y']
@@ -27,6 +39,10 @@ BUT
 
 Is fun too!
 
+Bless you Data::Dumper
+
+Be aware of the limitations.
+
 Keep it this simple if possible, because it maps well to other languages.
 
 It also maps well to many underlying serialization methods.
@@ -40,5 +56,51 @@ A daemon
 A coroutine
 
 Coroutine: no blocking!
+
+use strict;use warnings;
+use IPC::Transit;
+use POE::Something;
+make_recurring(recur => 1, work => sub {
+    while(my $m = IPC::Transit::receive(qname => 'neat', nonblock => 1)) {
+        save_message(%m);
+    }
+});
+make_recurring(recur => 10, work => sub {
+    do_fast_thing(@messages);
+});
+POE::Kernel->run();
+
+Ok, 'coroutines'
+
+Daemon: maybe blocking!
+
+use strict;use warnings;
+use IPC::Transit;
+while(1) {
+    while(my $m = IPC::Transit::receive(qname => 'neat')) {
+        $m->{result} = do_slow_thing($m->{thing_to_do});
+        IP::Transit::send(message => $m, qname => 'next_step');
+    }   
+}
+
+State coherence?
+
+The message is the state!*
+
+*Yes, overall.
+
+Sometimes, we keep 'side effects', often for caching.
+
+But there is a real cost
+
+When all state is in the message,
+
+Transparent core scalability
+
+Transparent box scalability
+
+Complex system is VERY easy to reason about
+
+Be an Iconoclast
 
 
