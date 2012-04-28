@@ -103,4 +103,39 @@ Complex system is VERY easy to reason about
 
 Be an Iconoclast
 
+Why stop there?
+
+sub every_function {
+    my %args = @_;
+}
+
+Every time.
+
+Every* time.
+
+* most every time.
+
+Core Concept:
+
+Return what you get
+
+Just add your own stuff
+
+Or maybe change some stuff
+
+
+END PRESENTATION
+
+
+Free form thoughts
+
+Need some kind of example.
+
+Major on my background: monitoring
+
+Perhaps I need to implement some kind of routing system.
+
+Back to the example:
+
+Make an emitter of random data.
 
