@@ -11,7 +11,7 @@ use vars qw(
     $local_queues
 );
 
-$VERSION = '0.01';
+$VERSION = '0.1';
 
 my $log = sub {
     my $l = shift;

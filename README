@@ -1,8 +1,6 @@
 NAME
     IPC::Transit - A framework for high performance message passing
 
-    ** DEVELOPER RELEASE **
-
 SYNOPSIS
       use strict;
       use IPC::Transit;
@@ -12,8 +10,6 @@ SYNOPSIS
       my $message = IPC::Transit::receive(qname => 'test');
 
 DESCRIPTION
-    ** DEVELOPER RELEASE **
-
     This is a proof of concept.
 
     The file and serialization will not be considered set until version 0.1.
@@ -49,13 +45,11 @@ SEE ALSO
     Todo
 
 TODO
-    In process delivery.
-
     Cross box delivery.
 
-    Queue handling facilities.
+    Crypto
 
-    Much else
+    Meta data
 
 BUGS
     Patches, flames, opinions, enhancement ideas are all welcome.

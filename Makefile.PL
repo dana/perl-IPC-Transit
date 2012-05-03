@@ -25,4 +25,5 @@ WriteMakefile(
     ABSTRACT     => 'A framework for high performance message passing',
     PL_FILES => {}, # ignore the Build.PL file
     EXE_FILES => ['bin/rtrans','bin/strans','bin/qtrans'],
+    LICENSE => 'perl',
 );
