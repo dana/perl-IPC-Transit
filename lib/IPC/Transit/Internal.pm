@@ -28,6 +28,7 @@ _drop_all_queues {
         $q->remove;
     }
 }
+
 sub
 _stat {
     my %args = @_;
@@ -40,6 +41,16 @@ _stat {
     }
     return $ret;
 }
+}
+
+sub
+_stats {
+    my $ret = [];
+    my $config = _load_transit_config();
+    foreach my $queue_name (keys %{$config->{queues}}) {
+        push @$ret, $queue_name;
+    }
+    return $ret;
 }
 
 sub

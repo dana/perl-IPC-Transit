@@ -52,6 +52,11 @@ send {
 }
 
 sub
+stats {
+    my $info = IPC::Transit::Internal::_stats();
+    return $info;
+}
+sub
 stat {
     my %args;
     {   my @args = @_;
