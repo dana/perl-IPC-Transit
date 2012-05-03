@@ -16,6 +16,6 @@ my $build = Module::Build->new (
     recursive_test_files => 1,
     dist_author          => 'Dana M. Diederich <diederich@gmail.com>',
     dist_abstract        => 'A framework for high performance message passing',
-    script_files => ['bin/rtrans','bin/strans'],
+    script_files => ['bin/rtrans','bin/strans','bin/qtrans'],
 );
 $build->create_build_script;
