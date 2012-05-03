@@ -7,7 +7,7 @@ use Data::Dumper;
 
 recur(repeat => 1, work => sub {
     while(my $m = IPC::Transit::receive(qname => 'process', nonblock => 1)) {
-        say $m->dump;
+        say Dumper $m;
     }
 });
 
