@@ -1,4 +1,4 @@
-#!env perl
+#!perl
 
 use common::sense;
 use IPC::Transit;
