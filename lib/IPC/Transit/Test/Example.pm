@@ -23,7 +23,7 @@ import {
 
 sub
 get_routes {
-    my $routes_text = read_file('/tmp/routes') or die "get_routes: /tmp/routes not found\n";
+    my $routes_text = read_file('routes.json') or die "get_routes: routes.json not found\n";
     my $routes;
     eval {
         $routes = decode_json($routes_text) or die "returned false\n";

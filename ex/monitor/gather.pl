@@ -10,7 +10,7 @@ use Sys::Hostname;
 
 config_trans(get_routes());
 
-recur(repeat => 1, work => sub {
+recur(repeat => 5, work => sub {
     my $text = read_file('/proc/loadavg') or die 'nothing in /proc/loadavg';
     if($text =~ /^.*?\s+.*?\s+.*?\s+(?<in_run_queue>\d+)\/(?<total_procs>\d+)/){
         route_trans(%+->merge({hostname => hostname, source => 'gather.pl'}));

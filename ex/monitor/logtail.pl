@@ -7,8 +7,6 @@ use IPC::Transit::Test::Example qw(recur get_routes);
 use Sys::Hostname;
 use Moose::Autobox;
  
-config_trans(get_routes());
-
 recur(repeat => 10, work => sub {
     say 're-configuring';
     config_trans(get_routes());

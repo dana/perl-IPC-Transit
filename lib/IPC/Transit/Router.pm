@@ -24,9 +24,10 @@ config_trans {
 sub
 _match {
     my $message = shift; my $match = shift;
-    while(my ($key, $value) = each %$match) {
+    my %match = %{$match};
+    while(my ($key, $value) = each %match) {
         return 0 unless defined $message->{$key};
-        return 0 unless $message->{$key} eq $value;
+        return 0 if $message->{$key} ne $value;
     }
     return 1;
 }
@@ -137,7 +138,7 @@ README
             forwards => [
                 {   qname => $q1,
                     hostname => $h1,
-                    continue => [0|1],
+#                    continue => [0|1],
                 }
             ],
             changes => [
