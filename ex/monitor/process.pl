@@ -6,7 +6,7 @@ use IPC::Transit::Test::Example qw(recur);
 use Data::Dumper;
 
 recur(repeat => 1, work => sub {
-    while(my $m = IPC::Transit::receive(qname => 'process', nonblock => 1)) {
+    while(my $m = IPC::Transit::receive(qname => 'process.pl', nonblock => 1)) {
         say Dumper $m;
     }
 });

@@ -3,24 +3,16 @@ package IPC::Transit::Router;
 use strict;use warnings;
 use IPC::Transit;
 use Storable;
-
-sub
-import {
-    my $self = shift;
-    my ($callpack, $callfile, $callline) = caller;
-    my @EXPORT;
-    if (@_) {
-        @EXPORT = @_;
-    }
-    foreach my $sym (@EXPORT) {
-        no strict 'refs';
-        *{"${callpack}::$sym"} = \&{"IPC::Transit::Router::$sym"};
-    }
-}
+require Exporter;
 
 use vars qw(
     $config
+    @ISA
+    @EXPORT_OK
 );
+@ISA = qw(Exporter);
+@EXPORT_OK = qw(config_trans route_trans);  # symbols to export on request
+
 sub
 config_trans {
     my $new = shift;

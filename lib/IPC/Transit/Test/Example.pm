@@ -4,6 +4,8 @@ use strict;use warnings;
 use Data::Dumper;
 use IPC::Transit;
 use POE;
+use JSON;
+use File::Slurp;
 
 sub
 import {
@@ -17,6 +19,17 @@ import {
         no strict 'refs';
         *{"${callpack}::$sym"} = \&{"IPC::Transit::Test::Example::$sym"};
     }
+}
+
+sub
+get_routes {
+    my $routes_text = read_file('/tmp/routes') or die "get_routes: /tmp/routes not found\n";
+    my $routes;
+    eval {
+        $routes = decode_json($routes_text) or die "returned false\n";
+    };
+    die "get_routes: decode_json() failed: $@\n" if $@;
+    return $routes;
 }
 
 sub
