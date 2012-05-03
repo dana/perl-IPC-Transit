@@ -13,13 +13,6 @@ use vars qw(
 
 $VERSION = '0.1';
 
-my $log = sub {
-    my $l = shift;
-    open my $fh, '>>', '/tmp/transit.log';
-    print $fh Dumper $l;
-    close $fh;
-};
-
 sub
 send {
     my %args;

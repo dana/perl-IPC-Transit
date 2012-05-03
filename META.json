@@ -40,7 +40,7 @@
    "provides" : {
       "IPC::Transit" : {
          "file" : "lib/IPC/Transit.pm",
-         "version" : "0.01_2"
+         "version" : "0.1"
       }
    },
    "release_status" : "unstable",
