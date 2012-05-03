@@ -1,10 +1,48 @@
 Message Based Programming
 
+Dana's Way
+
+There are many like it, but this one is mine
+
+IPC::Transit
+
 Simple?
 
 Simple!!
 
+Version 0.1 has 461 lines of code
+
+A little bit of history
+
+First written some time in the mid 90s
+
+Uploaded to friend's web server
+
+Nobody downloaded it
+
+Probably for the best
+
+Re-implement it every job I've landed at
+
+Only takes a few days each time
+
+Wasn't super clean though
+
+Somebody asked me to give a talk
+
+Damn
+
+Time to write from scratch
+
+Clean and CPAN worthy
+
+(more or less)
+
+ONWARD!
+
 Basic Tenents of Message Based Programming
+
+(Strictly in the context of this talk)
 
 Message Defined:
 
@@ -22,10 +60,6 @@ Like this:
     stuff => ['x', 10, 'y']
 }
 
-If possible, keep it this simple.
-
-It maps well to other languages.
-
 Works with all serialization methods.
 
 BUT
@@ -33,8 +67,7 @@ BUT
 {   this => 'thing',
     stuff => sub {
         return ['x', $main::foo++, qr/^x$/],
-    },
-
+    }
 }
 
 Is fun too!
@@ -45,43 +78,80 @@ Be aware of the limitations.
 
 Keep it this simple if possible, because it maps well to other languages.
 
-It also maps well to many underlying serialization methods.
+YAD
 
-Think of this method as a dynamic pipeline.
+(Yet Another Diversion)
 
-Each Stage is one or more of
+How I think about things
 
-A daemon
+Decouple first, ask questions later
 
-A coroutine
+Not always a good move
 
-Coroutine: no blocking!
+But it's where I usually start
 
-use strict;use warnings;
-use IPC::Transit;
-use POE::Something;
-make_recurring(recur => 1, work => sub {
-    while(my $m = IPC::Transit::receive(qname => 'neat', nonblock => 1)) {
-        save_message(%m);
-    }
-});
-make_recurring(recur => 10, work => sub {
-    do_fast_thing(@messages);
-});
-POE::Kernel->run();
+Performant designs
 
-Ok, 'coroutines'
+Perl is a fairly performant language
 
-Daemon: maybe blocking!
+Design is the key to performance
 
-use strict;use warnings;
-use IPC::Transit;
-while(1) {
-    while(my $m = IPC::Transit::receive(qname => 'neat')) {
-        $m->{result} = do_slow_thing($m->{thing_to_do});
-        IP::Transit::send(message => $m, qname => 'next_step');
-    }   
+Reliable systems
+
+Best way to make a flaky system?
+
+Try to make it 100% reliable!
+
+Reliability by embracing non-reliability
+
+We'll get back to that!
+
+OOP rocks
+
+Functional Programming rocks
+
+Be like Perl: multi-paradigm
+
+UNIX Philosophy
+
+Doug McIlroy: the inventor of Unix pipes
+
+One of the founders of the Unix tradition
+
+Make each program do one thing well.
+
+To do a new job, build afresh rather than complicate old programs by adding new features.
+
+Expect the output of every program to become the input to another
+
+How about some code?
+
+IPC::Transit::send(qname => 'prog2', message => { a => 'b' });
+
+my $m = IPC::Transit::receive(qname => 'prog2');
+
+The first line can be any process on any box.
+
+The second line can be any process on any box.
+
+Think of it as a dynamic pipeline.
+
+Producer1:
+while(my $work = get_slow_work()) {
+    IPC::Transit::send(qname => 'slow_worker.pl', message => $work);
 }
+
+slow_worker.pl:
+while(my $work = IPC::Transit::receive(qname => 'slow_worker.pl')) {
+    do_slow_work($work);
+    IPC::Transit::send(qname => 'reporting.pl', message => $work);
+}
+
+To do slow work faster:
+
+Run more copies of slow_worker.pl
+
+Maybe on different boxes
 
 State coherence?
 
@@ -91,7 +161,7 @@ The message is the state!*
 
 Sometimes, we keep 'side effects', often for caching.
 
-But there is a real cost
+Try to keep that to a minimum
 
 When all state is in the message,
 
@@ -101,20 +171,6 @@ Transparent box scalability
 
 Complex system is VERY easy to reason about
 
-Be an Iconoclast
-
-Why stop there?
-
-sub every_function {
-    my %args = @_;
-}
-
-Every time.
-
-Every* time.
-
-* most every time.
-
 Core Concept:
 
 Return what you get
@@ -123,21 +179,12 @@ Just add your own stuff
 
 Or maybe change some stuff
 
+Neat, but:
 
-END PRESENTATION
+Every program is doing its own routing
 
+NOT like a UNIX pipeline
 
-Free form thoughts
-
-Need some kind of example.
-
-Major on my background: monitoring
-
-Perhaps I need to implement some kind of routing system.
-
-Back to the example:
-
-Make an emitter of random data.  Better yet, something easy and useful like
-system uptime.
+$abstraction++;
 
 
