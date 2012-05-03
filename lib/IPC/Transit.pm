@@ -127,8 +127,6 @@ __END__
 
 IPC::Transit - A framework for high performance message passing
 
-** DEVELOPER RELEASE **
-
 =head1 SYNOPSIS
 
   use strict;
@@ -139,14 +137,6 @@ IPC::Transit - A framework for high performance message passing
   my $message = IPC::Transit::receive(qname => 'test');
 
 =head1 DESCRIPTION
-
-** DEVELOPER RELEASE **
-
-This is a proof of concept.
-
-The file and serialization will not be considered set until
-version 0.1.  More to the point, they will DEFINITELY change
-after this release.
 
 This queue framework has the following goals:
 
@@ -182,8 +172,34 @@ This queue framework has the following anti-goals:
 
 =back
 
-=head1 stat
-    Returns various stats about the passed queue name, per IPC::Msg::stat:
+=head1 FUNCTIONS
+
+=head2 send(qname => 'some_queue', message => $hashref, serialize_with => 'some serializer')
+
+This sends $hashref to 'some_queue'.  some_queue may be on the local
+box, or it may be in the same process space as the caller.
+
+This call will block until the destination queue has enough space to
+handle the serialized message.
+
+The serialize_with argument is optional, and defaults to Data::Dumper.
+Currently, we are using the module Data::Serializer::Raw; any serialization
+scheme that module supports can be used here.
+
+NB: there is no need to define the serialization type in receive.  It is
+automatically detected and utilized.
+
+=head2 receive(qname => 'some_queue', nonblock => [0|1])
+
+This function fetches a hash reference from 'some_queue' and returns it.
+By default, it will block until a reference is available.  Setting nonblock
+to a true value will cause this to return immediately with 'undef' is
+no messages are available.
+
+
+=head2 stat(qname => 'some_queue')
+
+Returns various stats about the passed queue name, per IPC::Msg::stat:
 
  print Dumper IPC::Transit::stat(qname => 'test');
  $VAR1 = {
@@ -201,6 +217,10 @@ This queue framework has the following anti-goals:
           'gid' => 1000
  }
 
+=head2 stats()
+
+Return an array of hash references, each containing the information 
+obtained by the stat() call, one entry for each queue on the system.
 
 =head1 SEE ALSO
 
@@ -208,11 +228,7 @@ A zillion other queueing systems.
 
 =head1 TODO
 
-In process delivery.
-
 Cross box delivery.
-
-Queue handling facilities.
 
 Much else
 
