@@ -17,6 +17,12 @@ recur(repeat => 1, work => sub {
     } else {
         die 'regex match failed';
     }
+    say 'sent metric';
+});
+
+recur(repeat => 10, work => sub {
+    say 're-configuring';
+    config_trans(get_routes());
 });
 
 POE::Kernel->run();
