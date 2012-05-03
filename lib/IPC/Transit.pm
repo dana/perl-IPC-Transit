@@ -89,8 +89,10 @@ receive {
         my $m = shift @{$local_queues->{$qname}};
         return $m->{message};
     }
+    my $flags = 0;
+    $flags = IPC::Transit::Internal::_get_flags('nowait') if $args{nonblock};
     my $from_queue = IPC::Transit::Internal::_initialize_queue(%args);
-    my $ret = $from_queue->rcv($args{serialized_data}, 1024000, 1, IPC::Transit::Internal::_get_flags('nowait'));
+    my $ret = $from_queue->rcv($args{serialized_data}, 1024000, 1, $flags);
     return undef unless $args{serialized_data};
     eval {
         $args{message} = IPC::Transit::Serialize::thaw(%args);
