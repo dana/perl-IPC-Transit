@@ -1,3 +1,19 @@
+First things first
+
+I approach this topic with a great deal of humility
+
+Seriously
+
+For me, this has worked very well
+
+One of the best things that can happen to me
+
+Being wrong about something
+
+So,
+
+This is a discussion!
+
 Message Based Programming
 
 Dana's Way
@@ -56,7 +72,7 @@ Normal is defined as scalars, arrays and hashes.
 
 Like this:
 
-{   this => 'thing',
+#{   this => 'thing',
     stuff => ['x', 10, 'y']
 }
 
@@ -64,7 +80,7 @@ Works with all serialization methods.
 
 BUT
 
-{   this => 'thing',
+#{   this => 'thing',
     stuff => sub {
         return ['x', $main::foo++, qr/^x$/],
     }
@@ -136,20 +152,20 @@ The second line can be any process on any box.
 
 Think of it as a dynamic pipeline.
 
-Producer1:
+#producer1.pl:
 while(my $work = get_slow_work()) {
-    IPC::Transit::send(qname => 'slow_worker.pl', message => $work);
+    IPC::Transit::send(qname => 'slow_worker1.pl', message => $work);
 }
 
-slow_worker.pl:
-while(my $work = IPC::Transit::receive(qname => 'slow_worker.pl')) {
+#slow_worker1.pl:
+while(my $work = IPC::Transit::receive(qname => 'slow_worker1.pl')) {
     do_slow_work($work);
     IPC::Transit::send(qname => 'reporting.pl', message => $work);
 }
 
 To do slow work faster:
 
-Run more copies of slow_worker.pl
+Run more copies of slow_worker1.pl
 
 Maybe on different boxes
 
@@ -186,5 +202,52 @@ Every program is doing its own routing
 NOT like a UNIX pipeline
 
 $abstraction++;
+
+'Centralize' the routing
+
+
+#producer1.pl:
+use IPC::Transit::Router qw(route_trans);
+while(my $work = get_slow_work()) {
+    route_trans($work);
+}
+
+#slow_worker1.pl:
+use IPC::Transit::Router qw(route_trans);
+while(my $work = IPC::Transit::receive(qname => 'slow_worker1.pl')) {
+    do_slow_work($work);
+    route_trans($work);
+}
+
+Wait, what?
+
+Secret sauce:
+
+#{   routes => [
+        {   match => { source => 'producer1.pl' },
+            forwards => [
+                { qname => 'slow_worker1.pl' }
+            ]
+        },{ match => { source => 'slow_worker1.pl' },
+            forwards => [
+                { qname => 'reporting.pl' }
+            ]
+        }
+    ]
+}
+
+I tend to use a single, global routing config
+
+This is *slightly* simplified
+
+Fully functional examples in the demo!
+
+This methodology is weak at first
+
+Its power grows as more things use it
+
+More in the demos
+
+http://www.realms.org/
 
 
