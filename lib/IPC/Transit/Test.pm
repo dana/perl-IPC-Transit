@@ -12,7 +12,7 @@ clear_test_queue {
     for(1..100) {
         my $m;
         eval {
-            $m = IPC::Transit::receive(qname => 'test');
+            $m = IPC::Transit::receive(qname => 'test', nonblock => 1);
         };
         last if $m;
     }
