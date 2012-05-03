@@ -2,7 +2,9 @@
 
 use strict;use warnings;
 use IPC::Transit;
-use Data::Dumper;
 
+my $format = '%-50s%-20s';
 my $info = IPC::Transit::stats();
-print Dumper $info;
+foreach my $queue (@{$info}) {
+    printf("$format\n", $queue->{qname}, $queue->{qnum});
+}
