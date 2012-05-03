@@ -33,12 +33,14 @@ sub
 _stat {
     my %args = @_;
     my $qid = _get_queue_id(%args);
+    _initialize_queue(%args);
     my @heads = qw(uid gid cuid cgid mode qnum qbytes lspid lrpid stime rtime ctime);
     my $ret = {};
     my @items = @{$queue_cache->{$qid}->stat};
     foreach my $item (@items) {
         $ret->{shift @heads} = $item;
     }
+    $ret->{qname} = $args{qname};
     return $ret;
 }
 }
@@ -48,7 +50,7 @@ _stats {
     my $ret = [];
     my $config = _load_transit_config();
     foreach my $queue_name (keys %{$config->{queues}}) {
-        push @$ret, $queue_name;
+        push @$ret, IPC::Transit::stat(qname => $queue_name);
     }
     return $ret;
 }
