@@ -6,3 +6,25 @@ LICENSE
 Makefile.PL
 MANIFEST			This list of files
 t/basic.t
+bin/qtrans
+bin/rtrans
+bin/strans
+CHANGES
+docs/svperl/slides.txt
+ex/monitor/gather.pl
+ex/monitor/logtail.pl
+ex/monitor/process.pl
+ex/monitor/routes.json
+lib/IPC/Transit/Router.pm
+lib/IPC/Transit/Serialize.pm
+lib/IPC/Transit/Test.pm
+lib/IPC/Transit/Test/Example.pm
+META.json
+META.yml
+NOTES
+t/check_serializer_storable.t
+t/default_blocking.t
+t/local_delivery.t
+t/nonblocking.t
+t/router_basic.t
+TODO
