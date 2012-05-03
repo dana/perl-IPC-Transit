@@ -20,6 +20,8 @@ Uploaded to friend's web server
 
 Nobody downloaded it
 
+Probably for the best
+
 Re-implement it every job I've landed at
 
 Only takes a few days each time
@@ -65,8 +67,7 @@ BUT
 {   this => 'thing',
     stuff => sub {
         return ['x', $main::foo++, qr/^x$/],
-    },
-    nice => sub { return 'thing'; }
+    }
 }
 
 Is fun too!
@@ -76,6 +77,49 @@ Bless you Data::Dumper
 Be aware of the limitations.
 
 Keep it this simple if possible, because it maps well to other languages.
+
+YAD
+
+(Yet Another Diversion)
+
+How I think about things
+
+Decouple first, ask questions later
+
+Not always a good move
+
+But it's where I usually start
+
+Performant designs
+
+Perl is a fairly performant language
+
+Design is the key to performance
+
+Reliable systems
+
+Best way to make a flaky system?
+
+Try to make it 100% reliable!
+
+Reliability by embracing non-reliability
+
+We'll get back to that!
+
+UNIX Philosophy
+
+Doug McIlroy: the inventor of Unix pipes
+
+One of the founders of the Unix tradition
+
+Make each program do one thing well.
+
+To do a new job, build afresh rather than complicate old programs by adding new features.
+
+Expect the output of every program to become the input to another
+
+How about some code?
+
 
 
 
