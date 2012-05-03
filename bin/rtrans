@@ -8,5 +8,4 @@ my $qname = shift or die 'qname required';
 while(1) {
     my $m = IPC::Transit::receive(qname => $qname);
     print Dumper $m;
-    sleep 1;
 }
