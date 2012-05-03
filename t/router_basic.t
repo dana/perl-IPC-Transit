@@ -4,7 +4,7 @@ use strict;use warnings;
 
 use lib '../lib';
 use lib 'lib';
-use Test::More tests => 80;
+use Test::More tests => 83;
 
 use_ok('IPC::Transit') or exit;
 use_ok('IPC::Transit::Router') or exit;
@@ -54,6 +54,23 @@ ok not IPC::Transit::Router::config_trans();
     ok not IPC::Transit::Router::_match({a => 'c', e => 'd'}, $config->{routes}->[0]->{match});
 }
 
+{   my $config = {
+        routes => [
+            {   match => {
+                    source => 'gather.pl',
+                },
+                forwards => [
+                    {   qname => 'test',
+                    }
+                ]
+            }
+        ]
+    };
+
+    ok IPC::Transit::Router::config_trans($config);
+    ok IPC::Transit::Router::route_trans({source => 'logtail.pl'});
+    ok not IPC::Transit::receive(qname => 'test', nonblock => 1);
+}
 {   my $config = {
         routes => [
             {   match => {
