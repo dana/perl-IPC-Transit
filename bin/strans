@@ -1,0 +1,15 @@
+#!env perl
+
+use strict;use warnings;
+use IPC::Transit;
+use Data::Dumper;
+
+print "Nothing here yet\n";
+
+__END__
+my $qname = shift or die 'qname required';
+while(1) {
+    my $m = IPC::Transit::receive(qname => $qname);
+    print Dumper $m;
+    sleep 1;
+}
