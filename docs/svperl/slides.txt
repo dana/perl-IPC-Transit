@@ -137,5 +137,7 @@ Perhaps I need to implement some kind of routing system.
 
 Back to the example:
 
-Make an emitter of random data.
+Make an emitter of random data.  Better yet, something easy and useful like
+system uptime.
+
 
