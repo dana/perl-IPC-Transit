@@ -132,6 +132,8 @@ IPC::Transit - A framework for high performance message passing
 =head1 DESCRIPTION
 
 This queue framework has the following goals:
+    
+    :)
 
 =over 4
 
