@@ -31,6 +31,10 @@ send {
         unless $message;
     die "IPC::Transit::send: parameter 'message' must be a HASH reference"
         if ref $message ne 'HASH';
+    die "IPC::Transit::send: passed 'message' has a '.transit' key that is not a HASH reference"
+        if $message->{'.transit'} and ref $message->{'.transit'} ne 'HASH';
+    $message->{'.transit'} = {} unless $message->{'.transit'};
+    $message->{'.transit'}->{send_ts} = time;
 
     if($local_queues and $local_queues->{$qname}) {
         push @{$local_queues->{$qname}}, \%args;
