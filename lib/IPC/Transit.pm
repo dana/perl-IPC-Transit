@@ -99,6 +99,7 @@ receive {
     eval {
         $args{message} = IPC::Transit::Serialize::thaw(%args);
     };
+    delete $args{message}->{'.transit'} unless $args{extended};
     return $args{message};
 }
 
