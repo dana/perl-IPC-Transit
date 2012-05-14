@@ -35,7 +35,8 @@ thaw {
             if scalar @args % 2;
         %args = @args;
     }
-    my ($serialize_with, $serialized_data) = split '\/', $args{serialized_data};
+    my ($serialize_with, @serialized_data) = split '\/', $args{serialized_data};
+    my $serialized_data = join '/', @serialized_data;
     eval {
         $args{message} = $serializers->{$serialize_with}->deserialize($serialized_data);
     };
