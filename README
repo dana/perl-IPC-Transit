@@ -10,10 +10,6 @@ SYNOPSIS
       my $message = IPC::Transit::receive(qname => 'test');
 
 DESCRIPTION
-    This is a proof of concept.
-
-    The file and serialization will not be considered set until version 0.1.
-    More to the point, they will DEFINITELY change after this release.
 
     This queue framework has the following goals:
 
