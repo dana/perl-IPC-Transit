@@ -28,3 +28,5 @@ t/local_delivery.t
 t/nonblocking.t
 t/router_basic.t
 TODO
+t/bug-slashes.t
+t/extended.t

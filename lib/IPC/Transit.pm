@@ -11,7 +11,7 @@ use vars qw(
     $local_queues
 );
 
-$VERSION = '0.1';
+$VERSION = '0.3';
 
 sub
 send {

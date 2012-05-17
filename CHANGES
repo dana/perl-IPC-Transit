@@ -1,3 +1,5 @@
+0.3 Thu May 17 05:46:38 PDT 2012
+    - Fixed failure to load arbitrary serialization module on thaw
 0.01_2 Sun Apr 22 00:55:02 PDT 2012
     - many bug fixes, along with BSD fixups
 0.01_1 Sat Mar 24 20:30:28 PDT 2012
