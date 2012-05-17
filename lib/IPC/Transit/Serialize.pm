@@ -36,6 +36,11 @@ thaw {
         %args = @args;
     }
     my ($serialize_with, @serialized_data) = split '\/', $args{serialized_data};
+    if(not $serializers->{$serialize_with}) {
+        $serializers->{$serialize_with} = Data::Serializer::Raw->new(
+            serializer => $serialize_with
+        );
+    }
     my $serialized_data = join '/', @serialized_data;
     eval {
         $args{message} = $serializers->{$serialize_with}->deserialize($serialized_data);
