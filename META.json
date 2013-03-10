@@ -20,7 +20,9 @@
             "IPC::Msg" : "0",
             "POSIX" : "0",
             "Data::Dumper" : "0",
-            "Data::Serializer" : "0"
+            "Data::Serializer" : "0",
+            "HTTP::Lite" : "0",
+            "HTTP::Server::Simple::CGI" : "0"
          }
       },
       "configure" : {
@@ -33,14 +35,16 @@
             "IPC::SysV" : "0",
             "IPC::Msg" : "0",
             "POSIX" : "0",
-            "Data::Dumper" : "0"
+            "Data::Dumper" : "0",
+            "HTTP::Lite" : "0",
+            "HTTP::Server::Simple::CGI" : "0"
          }
       }
    },
    "provides" : {
       "IPC::Transit" : {
          "file" : "lib/IPC/Transit.pm",
-         "version" : "0.3"
+         "version" : "0.4"
       }
    },
    "release_status" : "unstable",
@@ -49,5 +53,5 @@
          "http://dev.perl.org/licenses/"
       ]
    },
-   "version" : "0.3"
+   "version" : "0.4"
 }

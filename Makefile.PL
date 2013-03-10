@@ -18,12 +18,14 @@ WriteMakefile(
         'POSIX'            => 0,
         'Data::Dumper'     => 0,
         'Data::Serializer' => 0,
+        'HTTP::Lite' => 0,
+        'HTTP::Server::Simple::CGI' => 0,
     },
     test =>
         {TESTS => "@tests"},
     AUTHOR       => 'Dana M. Diederich <diederich@gmail.com>',
     ABSTRACT     => 'A framework for high performance message passing',
     PL_FILES => {}, # ignore the Build.PL file
-    EXE_FILES => ['bin/rtrans','bin/strans','bin/qtrans'],
+    EXE_FILES => ['bin/rtrans','bin/strans','bin/qtrans','bin/remote-transitd','bin/remote-transit-gateway'],
     LICENSE => 'perl',
 );

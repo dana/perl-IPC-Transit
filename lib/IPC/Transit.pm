@@ -2,6 +2,7 @@ package IPC::Transit;
 
 use strict;use warnings;
 use Data::Dumper;
+use HTTP::Lite;
 use IPC::Transit::Internal;
 use IPC::Transit::Serialize;
 
@@ -11,7 +12,7 @@ use vars qw(
     $local_queues
 );
 
-$VERSION = '0.3';
+$VERSION = '0.4';
 
 sub
 send {
@@ -35,6 +36,12 @@ send {
         if $message->{'.transit'} and ref $message->{'.transit'} ne 'HASH';
     $message->{'.transit'} = {} unless $message->{'.transit'};
     $message->{'.transit'}->{send_ts} = time;
+    if($args{destination}) {
+        $message->{'.transit'}->{qname} = $qname;
+        $message->{'.transit'}->{destination} = $args{destination};
+        $qname = 'transitd';
+        $args{qname} = 'transitd';
+    }
 
     if($local_queues and $local_queues->{$qname}) {
         push @{$local_queues->{$qname}}, \%args;
@@ -99,8 +106,35 @@ receive {
     eval {
         $args{message} = IPC::Transit::Serialize::thaw(%args);
     };
-    delete $args{message}->{'.transit'} unless $args{extended};
-    return $args{message};
+    my $message = $args{message};
+    if($message->{'.transit'} and $message->{'.transit'}->{qname}) {
+        #this message is destined for a queue that is different
+        #than the one it landed on. Most likely a remote transit
+        #this means that we are likely running inside remote-transitd, and
+        #we need to post out
+        return post_remote($message);
+    }
+    delete $message->{'.transit'} unless $args{extended};
+    return $message;
+}
+
+sub
+post_remote {
+    #This is very simple, first-generation logic.  It assumes that every
+    #message that is received that has a qname set is destined for off box.
+
+    #so here, we want to post this message to the destination over http
+    my $message = shift;
+    my $http = HTTP::Lite->new;
+    my $serialized = IPC::Transit::Serialize::freeze(message => $message);
+    my $vars = {
+        message => $serialized,
+    };
+    $http->prepare_post($vars);
+    my $url = 'http://' . $message->{'.transit'}->{destination} . ':9816/message';
+    my $req = $http->request($url)
+        or die "Unable to get document: $!";
+    return $req;
 }
 
 sub

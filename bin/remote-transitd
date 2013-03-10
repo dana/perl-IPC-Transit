@@ -1,0 +1,14 @@
+#!/usr/bin/perl
+
+use strict;use warnings;
+use IPC::Transit;
+use Data::Dumper;
+
+while(1) {
+    eval {
+        #The special logic that triggers here is in IPC::Transit::post_remote
+        my $ret = IPC::Transit::receive(qname => 'transitd');
+        print Dumper $ret;
+    };
+    print "error: $@\n" if $@;
+}

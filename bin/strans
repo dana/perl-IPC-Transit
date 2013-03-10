@@ -5,6 +5,7 @@ use IPC::Transit;
 
 my $message_text = shift or die 'perl message required';
 my $qname = shift or die 'qname required';
+my $destination = shift;
 
 our $message;
 eval '$message = ' . $message_text;
@@ -15,4 +16,4 @@ die "the perl message passed in first argument is not a reference"
 die "the perl message passed in first argument is not a HASH reference"
     unless ref $message eq 'HASH';
 
-print IPC::Transit::send(qname => $qname, message => $message), "\n";
+print IPC::Transit::send(qname => $qname, message => $message, destination => $destination), "\n";

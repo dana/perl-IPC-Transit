@@ -12,10 +12,12 @@ my $build = Module::Build->new (
         'POSIX'            => 0,
         'Data::Dumper'     => 0,
         'Data::Serializer' => 0,
+        'HTTP::Lite' => 0,
+        'HTTP::Server::Simple::CGI' => 0,
     },
     recursive_test_files => 1,
     dist_author          => 'Dana M. Diederich <diederich@gmail.com>',
     dist_abstract        => 'A framework for high performance message passing',
-    script_files => ['bin/rtrans','bin/strans','bin/qtrans'],
+    script_files => ['bin/rtrans','bin/strans','bin/qtrans','bin/remote-transitd','bin/remote-transit-gateway'],
 );
 $build->create_build_script;
