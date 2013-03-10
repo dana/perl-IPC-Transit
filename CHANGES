@@ -1,3 +1,5 @@
+0.4 Sun Mar 10 13:01:01 PDT 2013
+    - Very basic remote transit: cross box messages
 0.3 Thu May 17 05:46:38 PDT 2012
     - Fixed failure to load arbitrary serialization module on thaw
 0.01_2 Sun Apr 22 00:55:02 PDT 2012
