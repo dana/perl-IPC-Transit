@@ -168,12 +168,18 @@ IPC::Transit - A framework for high performance message passing
   #...the same or a different process on the same machine
   my $message = IPC::Transit::receive(qname => 'test');
 
+  #remote transit
+  remote-transitd &  #run 'outgoing' transitd gateway
+  IPC::Transit::send(qname => 'test', message => { a => 'b' }, desitnation => 'some.other.box.com');
+
+  #On 'some.other.box.com':
+  remote-transit-gateway &  #run 'incoming' transitd gateway
+  my $message = IPC::Transit::receive(qname => 'test');
+
 =head1 DESCRIPTION
 
 This queue framework has the following goals:
     
-    :)
-
 =over 4
 
 =item * Serverless
@@ -262,9 +268,9 @@ A zillion other queueing systems.
 
 =head1 TODO
 
-Cross box delivery.
+Crypto
 
-Much else
+much else
 
 =head1 BUGS
 
@@ -276,7 +282,7 @@ kind of support as long as it doesn't greatly affect the primary goals.
 
 =head1 COPYRIGHT
 
-Copyright (c) 2012, Dana M. Diederich. All Rights Reserved.
+Copyright (c) 2012, 2013 Dana M. Diederich. All Rights Reserved.
 
 =head1 LICENSE
 
