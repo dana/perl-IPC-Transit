@@ -15,14 +15,13 @@ my %dispatch = (
 sub handle_request {
     my $self = shift;
     my $cgi  = shift;
-  
+
     my $path = $cgi->path_info();
     my $handler = $dispatch{$path};
 
     if (ref($handler) eq "CODE") {
         print "HTTP/1.0 200 OK\r\n";
         $handler->($cgi);
-        
     } else {
         print "HTTP/1.0 404 Not found\r\n";
         print $cgi->header,
@@ -35,7 +34,7 @@ sub handle_request {
 sub resp_message {
     my $cgi  = shift;   # CGI.pm object
     return if !ref $cgi;
-    
+
     eval {
         my $serialized_message = $cgi->param('message');
         print STDERR "$serialized_message\n";
@@ -53,7 +52,7 @@ sub resp_message {
     print "error: $@\n" if $@;
 }
 
-} 
+}
 
 # start the server on port 8080
 MyWebServer->new(9816)->run;
