@@ -9,8 +9,11 @@ t/basic.t
 bin/qtrans
 bin/rtrans
 bin/strans
+bin/remote-transit-gateway
+bin/remote-transitd
 CHANGES
 docs/svperl/slides.txt
+docs/svperl/slidegen
 ex/monitor/gather.pl
 ex/monitor/logtail.pl
 ex/monitor/process.pl
