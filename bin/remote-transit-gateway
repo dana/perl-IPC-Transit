@@ -54,5 +54,8 @@ sub resp_message {
 
 }
 
+print "Note: as of now, you have just opened an enormous, externally exploitable security hole.\n";
+print "This is a proof of concept server only.  If you use it, make sure nobody you don't trust can get to it.\n";
+
 # start the server on port 8080
 MyWebServer->new(9816)->run;
