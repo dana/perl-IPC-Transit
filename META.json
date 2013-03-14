@@ -44,7 +44,7 @@
    "provides" : {
       "IPC::Transit" : {
          "file" : "lib/IPC/Transit.pm",
-         "version" : "0.4"
+         "version" : "0.5"
       }
    },
    "release_status" : "unstable",
@@ -53,5 +53,5 @@
          "http://dev.perl.org/licenses/"
       ]
    },
-   "version" : "0.4"
+   "version" : "0.5"
 }

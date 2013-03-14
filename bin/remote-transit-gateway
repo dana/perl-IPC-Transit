@@ -3,10 +3,23 @@
 package MyWebServer;
 
 use HTTP::Server::Simple::CGI;
+use Getopt::Std;
 use Data::Dumper;
 use base qw(HTTP::Server::Simple::CGI);
 use IPC::Transit;
-use IPC::Transit::Serialize;
+
+my $opts = {};
+getopt('Pd', $opts);
+$| = 1;
+my $debug = 0;
+if($opts->{P}) {
+    $IPC::Transit::config_dir = $opts->{P};
+    print "Using alternative Transit config dir: $IPC::Transit::config_dir\n";
+}
+if($opts->{d}) {
+    $debug = $opts->{d};
+    print "Debug level $debug set\n";
+}
 
 my %dispatch = (
     '/message' => \&resp_message,
@@ -37,12 +50,16 @@ sub resp_message {
 
     eval {
         my $serialized_message = $cgi->param('message');
-        print STDERR "$serialized_message\n";
-        my $message = IPC::Transit::Serialize::thaw(serialized_data => $serialized_message);
-        print STDERR Dumper $message;
-        my $qname = $message->{'.transit'}->{qname};
-        delete $message->{'.transit'};
-        IPC::Transit::send(qname => $qname, message => $message);
+        print STDERR "$serialized_message\n" if $debug;
+        my $message = {
+            serialized_wire_data => $serialized_message,
+        };
+        IPC::Transit::unpack_data($message);
+        print STDERR Dumper $message if $debug;
+        my $qname = $message->{message}->{'.ipc_transit_meta'}->{destination_qname};
+        delete $message->{message}->{'.ipc_transit_meta'}->{destination_qname};
+        delete $message->{message}->{'.ipc_transit_meta'}->{destination};
+        IPC::Transit::send(qname => $qname, message => $message->{message});
 
         print $cgi->header,
             $cgi->start_html("Hello"),

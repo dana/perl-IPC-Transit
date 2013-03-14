@@ -3,6 +3,14 @@
 use strict;use warnings;
 use IPC::Transit;
 use Data::Dumper;
+use Getopt::Std;
+
+my $opts = {};
+getopt('P', $opts);
+if($opts->{P}) {
+    $IPC::Transit::config_dir = $opts->{P};
+    print "Using alternative Transit config dir: $IPC::Transit::config_dir\n";
+}
 
 my $qname = shift or die 'qname required';
 while(1) {

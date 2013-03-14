@@ -3,8 +3,8 @@ package IPC::Transit;
 use strict;use warnings;
 use Data::Dumper;
 use HTTP::Lite;
+use Data::Serializer::Raw;
 use IPC::Transit::Internal;
-use IPC::Transit::Serialize;
 
 use vars qw(
     $VERSION
@@ -12,56 +12,78 @@ use vars qw(
     $local_queues
 );
 
-$VERSION = '0.4';
+our $wire_header_arg_translate = {
+    destination => 'd',
+    compression => 'c',
+    serializer => 's'
+};
+our $wire_header_args = {
+    s => {  #serializer
+        json => 1,
+        yaml => 1,
+        storable => 1,
+    },
+    c => {  #compression
+        zlib => 1,
+        snappy => 1,
+        none => 1
+    },
+    d => 1, #destination address
+    t => 1, #hop TTL
+    q => 1, #destination qname
+};
+our $std_args = {
+    message => 1,
+    qname => 1,
+    nowait => 1,
+};
+our $local_serializer_translate = {
+    json => 'JSON',
+    storable => 'Storable',
+};
+$VERSION = '0.5';
 
-sub
-send {
-    my %args;
+sub send {
+    my $args;
     {   my @args = @_;
         die 'IPC::Transit::send: even number of arguments required'
             if scalar @args % 2;
-        %args = @args;
+        my %args = @args;
+        $args = \%args;
     }
-    my $qname = $args{qname};
+    my $qname = $args->{qname};
     die "IPC::Transit::send: parameter 'qname' required"
         unless $qname;
     die "IPC::Transit::send: parameter 'qname' must be a scalar"
         if ref $qname;
-    my $message = $args{message};
+    my $message = $args->{message};
     die "IPC::Transit::send: parameter 'message' required"
         unless $message;
     die "IPC::Transit::send: parameter 'message' must be a HASH reference"
         if ref $message ne 'HASH';
-    die "IPC::Transit::send: passed 'message' has a '.transit' key that is not a HASH reference"
-        if $message->{'.transit'} and ref $message->{'.transit'} ne 'HASH';
-    $message->{'.transit'} = {} unless $message->{'.transit'};
-    $message->{'.transit'}->{send_ts} = time;
-    if($args{destination}) {
-        $message->{'.transit'}->{qname} = $qname;
-        $message->{'.transit'}->{destination} = $args{destination};
-        $qname = 'transitd';
-        $args{qname} = 'transitd';
+    $message->{'.ipc_transit_meta'} = {} unless $message->{'.ipc_transit_meta'};
+    $message->{'.ipc_transit_meta'}->{send_ts} = time;
+    if($args->{destination}) {
+        $args->{destination_qname} = $args->{qname};
+        $args->{qname} = 'transitd';
+        $args->{ttl} = 9 unless $args->{ttl};
     }
 
     if($local_queues and $local_queues->{$qname}) {
-        push @{$local_queues->{$qname}}, \%args;
-        return \%args;
+        push @{$local_queues->{$qname}}, $args;
+        return $args;
     }
 
-    eval {
-        $args{serialized_message} = IPC::Transit::Serialize::freeze(%args);
-    };
-    my $to_queue = IPC::Transit::Internal::_initialize_queue(%args);
-    return $to_queue->snd(1,$args{serialized_message}, IPC::Transit::Internal::_get_flags('nonblocks'));
+    my $to_queue = IPC::Transit::Internal::_initialize_queue(%$args);
+    pack_message($args);
+    return $to_queue->snd(1,$args->{serialized_wire_data}, IPC::Transit::Internal::_get_flags('nonblocks'));
 }
 
-sub
-stats {
+sub stats {
     my $info = IPC::Transit::Internal::_stats();
     return $info;
 }
-sub
-stat {
+sub stat {
     my %args;
     {   my @args = @_;
         die 'IPC::Transit::stat: even number of arguments required'
@@ -81,8 +103,7 @@ stat {
     my $info = IPC::Transit::Internal::_stat(%args);
 }
 
-sub
-receive {
+sub receive {
     my %args;
     {   my @args = @_;
         die 'IPC::Transit::receive: even number of arguments required'
@@ -101,44 +122,45 @@ receive {
     my $flags = 0;
     $flags = IPC::Transit::Internal::_get_flags('nowait') if $args{nonblock};
     my $from_queue = IPC::Transit::Internal::_initialize_queue(%args);
-    my $ret = $from_queue->rcv($args{serialized_data}, 1024000, 1, $flags);
-    return undef unless $args{serialized_data};
-    eval {
-        $args{message} = IPC::Transit::Serialize::thaw(%args);
+    my $serialized_wire_data;
+    $from_queue->rcv($serialized_wire_data, 1024000, 0, $flags);
+    return undef unless $serialized_wire_data;
+    my $message = {
+        serialized_wire_data => $serialized_wire_data,
     };
-    my $message = $args{message};
-    if($message->{'.transit'} and $message->{'.transit'}->{qname}) {
+    unpack_data($message);
+    if($message->{message}->{'.ipc_transit_meta'} and $message->{message}->{'.ipc_transit_meta'}->{destination_qname}) {
         #this message is destined for a queue that is different
         #than the one it landed on. Most likely a remote transit
         #this means that we are likely running inside remote-transitd, and
         #we need to post out
         return post_remote($message);
     }
-    delete $message->{'.transit'} unless $args{extended};
-    return $message;
+    if($args{raw}) {
+        return $message;
+    } else {
+        return $message->{message};
+    }
 }
 
-sub
-post_remote {
+sub post_remote {
     #This is very simple, first-generation logic.  It assumes that every
     #message that is received that has a qname set is destined for off box.
 
     #so here, we want to post this message to the destination over http
     my $message = shift;
     my $http = HTTP::Lite->new;
-    my $serialized = IPC::Transit::Serialize::freeze(message => $message);
     my $vars = {
-        message => $serialized,
+        message => $message->{serialized_wire_data},
     };
     $http->prepare_post($vars);
-    my $url = 'http://' . $message->{'.transit'}->{destination} . ':9816/message';
+    my $url = 'http://' . $message->{message}->{'.ipc_transit_meta'}->{destination} . ':9816/message';
     my $req = $http->request($url)
         or die "Unable to get document: $!";
     return $req;
 }
 
-sub
-local_queue {
+sub local_queue {
     my %args;
     {   my @args = @_;
         die 'IPC::Transit::local_queue: even number of arguments required'
@@ -151,6 +173,86 @@ local_queue {
     return 1;
 }
 
+sub pack_message {
+    my $args = shift;
+    $args->{message}->{'.ipc_transit_meta'} = {}
+        unless $args->{message}->{'.ipc_transit_meta'};
+    foreach my $key (keys %$wire_header_arg_translate) {
+        next unless $args->{$key};
+        $args->{$wire_header_arg_translate->{$key}} = $args->{$key};
+    }
+    foreach my $key (keys %$args) {
+        next if $wire_header_args->{$key};
+        next if $std_args->{$key};
+        $args->{message}->{'.ipc_transit_meta'}->{$key} = $args->{$key};
+    }
+    $args->{serialized_message} = freeze($args);
+    serialize_wire_meta($args);
+    my $l = length $args->{serialized_wire_meta_data};
+    $args->{serialized_wire_data} = "$l:$args->{serialized_wire_meta_data}$args->{serialized_message}";
+    return $args->{serialized_wire_data};
+}
+sub unpack_data {
+    my $args = shift;
+    my ($length, $header_and_message);
+    if($args->{serialized_wire_data} =~ /^(\d+):(.*)$/) {
+        $length = $1; $header_and_message = $2;
+    } else {
+        die 'passed serialized_wire_data malformed';
+    }
+    $args->{serialized_header} = substr($header_and_message, 0, $length, '');
+    $args->{serialized_message} = $header_and_message;
+    deserialize_wire_meta($args);
+    thaw($args);
+    return $args;
+}
+sub serialize_wire_meta {
+    my $args = shift;
+    my $s = '';
+    foreach my $key (keys %$args) {
+        my $translated_key = $wire_header_arg_translate->{$key};
+        if($translated_key and $wire_header_args->{$translated_key}) {
+            if($wire_header_args->{$translated_key} == 1) {
+                $s = "$s$translated_key=$args->{$key},";
+            } elsif($wire_header_args->{$translated_key}->{$args->{$key}}) {
+                $s = "$s$translated_key=$args->{$key},";
+            } else {
+                die "passed wire argument $translated_key had value of $args->{$translated_key} not of allowed type";
+            }
+        }
+    }
+    chop $s; #no trailing ,
+    $args->{serialized_wire_meta_data} = $s;
+}
+sub deserialize_wire_meta {
+    my $args = shift;
+    my $h = $args->{serialized_header};
+    my $ret = {};
+    foreach my $part (split ',', $h) {
+        my ($key, $val) = split '=', $part;
+        $ret->{$key} = $val;
+    }
+    $args->{wire_headers} = $ret;
+}
+
+#hard-coded serializer for now
+sub freeze {
+    my $args = shift;
+    my $s = Data::Serializer::Raw->new(
+        serializer => 'JSON',
+        options => {},
+    );
+    return $s->serialize($args->{message});
+}
+
+sub thaw {
+    my $args = shift;
+    my $s = Data::Serializer::Raw->new(
+        serializer => 'JSON',
+        options => {},
+    );
+    return $args->{message} = $s->deserialize($args->{serialized_message});
+}
 1;
 
 __END__
@@ -158,6 +260,15 @@ __END__
 =head1 NAME
 
 IPC::Transit - A framework for high performance message passing
+
+=head1 NOTES
+
+This module is wire incompatable with previous releases.  The wire
+protocol in 0.4 and before was meant as a prototype and naive.
+
+This is the final wire protocol.
+
+The serialization is currently hard-coded to JSON.
 
 =head1 SYNOPSIS
 
@@ -170,7 +281,7 @@ IPC::Transit - A framework for high performance message passing
 
   #remote transit
   remote-transitd &  #run 'outgoing' transitd gateway
-  IPC::Transit::send(qname => 'test', message => { a => 'b' }, desitnation => 'some.other.box.com');
+  IPC::Transit::send(qname => 'test', message => { a => 'b' }, destination => 'some.other.box.com');
 
   #On 'some.other.box.com':
   remote-transit-gateway &  #run 'incoming' transitd gateway
@@ -214,7 +325,7 @@ This queue framework has the following anti-goals:
 
 =head1 FUNCTIONS
 
-=head2 send(qname => 'some_queue', message => $hashref, serialize_with => 'some serializer')
+=head2 send(qname => 'some_queue', message => $hashref, serializer => 'some serializer')
 
 This sends $hashref to 'some_queue'.  some_queue may be on the local
 box, or it may be in the same process space as the caller.

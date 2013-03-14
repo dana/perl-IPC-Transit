@@ -6,6 +6,9 @@ LICENSE
 Makefile.PL
 MANIFEST			This list of files
 t/basic.t
+t/arbitrary-meta-data.t
+t/full-remote.t
+t/queue-management.t
 bin/qtrans
 bin/rtrans
 bin/strans
@@ -19,7 +22,6 @@ ex/monitor/logtail.pl
 ex/monitor/process.pl
 ex/monitor/routes.json
 lib/IPC/Transit/Router.pm
-lib/IPC/Transit/Serialize.pm
 lib/IPC/Transit/Test.pm
 lib/IPC/Transit/Test/Example.pm
 META.json

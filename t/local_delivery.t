@@ -23,8 +23,8 @@ foreach my $ct (1..20) {
 }
 
 __END__
-IPC::Transit::send(qname => 'test', message => { a => $_ });
-IPC::Transit::send(qname => 'test', message => { a => $_ });
-print Dumper IPC::Transit::stat(qname => 'test');
+IPC::Transit::send(qname => $IPC::Transit::test_qname, message => { a => $_ });
+IPC::Transit::send(qname => $IPC::Transit::test_qname, message => { a => $_ });
+print Dumper IPC::Transit::stat(qname => $IPC::Transit::test_qname);
 
 system 'ipcs -a -q | tail';

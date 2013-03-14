@@ -12,8 +12,7 @@ use vars qw(
 
 {
 my $queue_cache = {};
-sub
-_initialize_queue {
+sub _initialize_queue {
     my %args = @_;
     my $qid = _get_queue_id(%args);
     if(not $queue_cache->{$qid}) {
@@ -22,15 +21,16 @@ _initialize_queue {
     }
     return $queue_cache->{$qid};
 }
-sub
-_drop_all_queues {
-    foreach my $q (values %{$queue_cache}) {
-        $q->remove;
-    }
+
+sub _remove {
+    my %args = @_;
+    my $qname = $args{qname};
+    my $qid = _get_queue_id(%args);
+    $queue_cache->{$qid}->remove if $queue_cache->{$qid};
+    unlink _get_transit_config_dir() . "/$qname";
 }
 
-sub
-_stat {
+sub _stat {
     my %args = @_;
     my $qid = _get_queue_id(%args);
     _initialize_queue(%args);
@@ -45,28 +45,29 @@ _stat {
 }
 }
 
-sub
-_stats {
+sub _drop_all_queues {
+    foreach my $qname (keys %{$config->{queues}}) {
+        _remove(qname => $qname);
+    }
+}
+sub _stats {
     my $ret = [];
-    my $config = _load_transit_config();
+    _gather_queue_info();
     foreach my $queue_name (keys %{$config->{queues}}) {
         push @$ret, IPC::Transit::stat(qname => $queue_name);
     }
     return $ret;
 }
 
-sub
-_get_transit_config_file {
-    my $cf = $IPC::Transit::config_file || 'transit.conf';
-    my $dir = $IPC::Transit::config_dir || '/tmp/';
-    return "$dir/$cf";
+sub _get_transit_config_dir {
+    my $dir = $IPC::Transit::config_dir || '/tmp/ipc_transit/';
+    return $dir;
 }
 
-sub
-_lock_config_file {
-    my $lock_file = _get_transit_config_file() . '.lock';
+sub _lock_config_dir {
+    my $lock_file = _get_transit_config_dir() . '/.lock';
     my ($have_lock, $fh);
-    for (1..10) {
+    for (1..2) {
         if(sysopen($fh, $lock_file, _get_flags('exclusive_lock'))) {
             $have_lock = 1;
             last;
@@ -74,90 +75,83 @@ _lock_config_file {
         sleep 1;
     }
     if(not $have_lock) {
-        _unlock_config_file();
+        _unlock_config_dir();
         sysopen($fh, $lock_file, _get_flags('exclusive_lock'));
     }
     #we have the advisory lock for sure now
 }
 
 
-sub
-_unlock_config_file {
-    my $lock_file = _get_transit_config_file() . '.lock';
-    unlink $lock_file or die "_unlock_config_file: failed to unlink $lock_file: $!";
+sub _unlock_config_dir {
+    my $lock_file = _get_transit_config_dir() . '/.lock';
+    unlink $lock_file or die "_unlock_config_dir: failed to unlink $lock_file: $!";
 }
 
-sub
-_load_transit_config {
-    my $cf = _get_transit_config_file();
-    if(not -r $cf) {
-        my $previous_umask = umask 0000;
-        open my $fh, '>', $cf or die "failed to open '$cf' for writing: $!\n";
-        print $fh '' or die "failed to write to '$cf': $!\n";
-        close $fh or die "failed to close '$cf': $!";
-        umask $previous_umask;
-    }
-    my $queues = {};
-    open my $fh, '<', $cf or die "failed to open '$cf' for writing: $!\n";
-    while(my $line = <$fh>) {
-        chomp $line;
-        my ($qname, $qid, @others) = split ':', $line;
-        $queues->{$qname} = { qid => $qid, @others };
-    }
-    close $fh or die "failed to close '$cf': $!";
-    $config->{queues} = $queues;
-    return $config;
-}
-
-sub
-_write_transit_config {
-    my $cf = _get_transit_config_file();
-    my $previous_umask = umask 0000;
-    _lock_config_file();
-    eval {
-        open my $fh, '>', $cf or die "failed to open '$cf' for writing: $!\n";
-        while (my($qname, $rec) = each %{$config->{queues}}) {
-            print $fh "$qname:$rec->{qid}\n" or die "failed to write to '$cf': $!\n";
+sub _gather_queue_info {
+    _mk_queue_dir();
+    $config->{queues} = {} unless $config->{queues};
+    foreach my $filename (glob _get_transit_config_dir() . '/*') {
+        my $info = {};
+        open my $fh, '<', $filename
+            or die "IPC::Transit::Internal::_gather_queue_info: failed to open $filename for reading: $!";
+        while(my $line = <$fh>) {
+            chomp $line;
+            my ($key, $value) = split '=', $line;
+            $info->{$key} = $value;
         }
-        close $fh or die "failed to close '$cf': $!";
-    };
-    _unlock_config_file();
-    umask $previous_umask;
-    die "_write_transit_config failed: $@\n" if $@;
-    return $config;
+        die 'required key "qid" not found' unless $info->{qid};
+        die 'required key "qname" not found' unless $info->{qname};
+        $config->{queues}->{$info->{qname}} = $info;
+    }
 }
 
-
-sub
-_get_queue_id {
+sub _get_queue_id {
     my %args = @_;
+    _mk_queue_dir();
     my $qname = $args{qname};
+
+    #return it if we have it
     return $config->{queues}->{$qname}->{qid}
         if $config->{queues} and $config->{queues}->{$qname};
 
-    _lock_config_file();
+    #we don't have it; let's load it and try again
+    _gather_queue_info();
+    return $config->{queues}->{$qname}->{qid}
+        if $config->{queues} and $config->{queues}->{$qname};
+
+    #we still don't have it; get a lock, load it, try again, ane make
+    #it if necessary
+    _lock_config_dir();
     eval {
-        _load_transit_config();
+        #now re-load the config
+        _gather_queue_info();
+
+        #if we now have it, unlock and return it
         if($config->{queues} and $config->{queues}->{$qname}) {
-            _unlock_config_file();
+            _unlock_config_dir();
             return $config->{queues}->{$qname}->{qid};
         }
-        my $next_number;
-        if(scalar keys %{$config->{queues}}) {
-            {   my @current_numbers = sort {$a->{qid} <=> $b->{qid}} values %{$config->{queues}};
-                my $highest_number = pop @current_numbers;
-                $next_number = $highest_number->{qid} + 1;
-            }
-        } else {
-            #$config->{queues}->{$qname} = { qid => 1 };
-            $next_number = 1;
-        }
-        $config->{queues}->{$qname} = { qid => $next_number };
-        _unlock_config_file();
-        _write_transit_config();
-    };
 
+        #otherwise, we need to make one
+        {   my $file = _get_transit_config_dir() . "/$qname";
+            open my $fh, '>', $file or die "IPC::Transit::Internal::_get_queue_id: failed to open $file for writing: $!";
+            my $new_qid = IPC::SysV::ftok($file);
+            print $fh "qid=$new_qid\n";
+            print $fh "qname=$qname\n";
+            close $fh;
+        }
+        _unlock_config_dir();
+    };
+    if($@) {
+        _unlock_config_dir();
+    }
+    _gather_queue_info();
     return $config->{queues}->{$qname}->{qid};
+}
+
+sub _mk_queue_dir {
+    mkdir _get_transit_config_dir(), 0777
+        unless -d _get_transit_config_dir();
 }
 
 #gnarly looking UNIX goop hidden below

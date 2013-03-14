@@ -23,7 +23,7 @@ name: IPC-Transit
 provides:
   IPC::Transit:
     file: lib/IPC/Transit.pm
-    version: 0.4
+    version: 0.5
 requires:
   IPC::SysV: 0
   IPC::Msg: 0
@@ -31,4 +31,4 @@ requires:
   Data::Dumper: 0
 resources:
   license: http://dev.perl.org/licenses/
-version: 0.4
+version: 0.5

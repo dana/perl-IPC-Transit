@@ -18,7 +18,7 @@ ok not IPC::Transit::Router::config_trans();
                     a => 'b',
                 },
                 forwards => [
-                    {   qname => 'test',
+                    {   qname => $IPC::Transit::test_qname,
                     }
                 ]
             }
@@ -39,7 +39,7 @@ ok not IPC::Transit::Router::config_trans();
                     10 => 20,
                 },
                 forwards => [
-                    {   qname => 'test',
+                    {   qname => $IPC::Transit::test_qname,
                     }
                 ]
             }
@@ -60,7 +60,7 @@ ok not IPC::Transit::Router::config_trans();
                     source => 'gather.pl',
                 },
                 forwards => [
-                    {   qname => 'test',
+                    {   qname => $IPC::Transit::test_qname,
                     }
                 ]
             }
@@ -69,7 +69,7 @@ ok not IPC::Transit::Router::config_trans();
 
     ok IPC::Transit::Router::config_trans($config);
     ok IPC::Transit::Router::route_trans({source => 'logtail.pl'});
-    ok not IPC::Transit::receive(qname => 'test', nonblock => 1);
+    ok not IPC::Transit::receive(qname => $IPC::Transit::test_qname, nonblock => 1);
 }
 {   my $config = {
         routes => [
@@ -77,7 +77,7 @@ ok not IPC::Transit::Router::config_trans();
                     a => 'b',
                 },
                 forwards => [
-                    {   qname => 'test',
+                    {   qname => $IPC::Transit::test_qname,
                     }
                 ]
             }
@@ -86,9 +86,9 @@ ok not IPC::Transit::Router::config_trans();
 
     ok IPC::Transit::Router::config_trans($config);
     ok IPC::Transit::Router::route_trans({a => 'b'});
-    ok my $m = IPC::Transit::receive(qname => 'test', nonblock => 1);
+    ok my $m = IPC::Transit::receive(qname => $IPC::Transit::test_qname, nonblock => 1);
     ok $m->{a} eq 'b';
-    ok not IPC::Transit::receive(qname => 'test', nonblock => 1);
+    ok not IPC::Transit::receive(qname => $IPC::Transit::test_qname, nonblock => 1);
 }
 
 {   my $config = {
@@ -98,27 +98,27 @@ ok not IPC::Transit::Router::config_trans();
                     10 => 12,
                 },
                 forwards => [
-                    {   qname => 'test1' },
-                    {   qname => 'test2' }
+                    {   qname => $IPC::Transit::test_qname1 },
+                    {   qname => $IPC::Transit::test_qname2 }
                 ]
             }
         ]
     };
 
     ok IPC::Transit::Router::config_trans($config);
-    ok not IPC::Transit::receive(qname => 'test', nonblock => 1);
-    ok not IPC::Transit::receive(qname => 'test1', nonblock => 1);
-    ok not IPC::Transit::receive(qname => 'test2', nonblock => 1);
+    ok not IPC::Transit::receive(qname => $IPC::Transit::test_qname, nonblock => 1);
+    ok not IPC::Transit::receive(qname => $IPC::Transit::test_qname1, nonblock => 1);
+    ok not IPC::Transit::receive(qname => $IPC::Transit::test_qname2, nonblock => 1);
     ok IPC::Transit::Router::route_trans({a => 'b'});
-    ok not IPC::Transit::receive(qname => 'test', nonblock => 1);
-    ok not IPC::Transit::receive(qname => 'test1', nonblock => 1);
-    ok not IPC::Transit::receive(qname => 'test2', nonblock => 1);
+    ok not IPC::Transit::receive(qname => $IPC::Transit::test_qname, nonblock => 1);
+    ok not IPC::Transit::receive(qname => $IPC::Transit::test_qname1, nonblock => 1);
+    ok not IPC::Transit::receive(qname => $IPC::Transit::test_qname2, nonblock => 1);
     ok IPC::Transit::Router::route_trans({a => 'b', 10 => '12', x => 'y'});
-    ok not IPC::Transit::receive(qname => 'test', nonblock => 1);
-    ok my $m = IPC::Transit::receive(qname => 'test1', nonblock => 1);
+    ok not IPC::Transit::receive(qname => $IPC::Transit::test_qname, nonblock => 1);
+    ok my $m = IPC::Transit::receive(qname => $IPC::Transit::test_qname1, nonblock => 1);
     ok $m->{a} eq 'b';
     ok $m->{x} eq 'y';
-    ok $m = IPC::Transit::receive(qname => 'test2', nonblock => 1);
+    ok $m = IPC::Transit::receive(qname => $IPC::Transit::test_qname2, nonblock => 1);
     ok $m->{a} eq 'b';
     ok $m->{x} eq 'y';
 }
@@ -132,35 +132,35 @@ ok not IPC::Transit::Router::config_trans();
                     10 => 12,
                 },
                 forwards => [
-                    {   qname => 'test1' },
-                    {   qname => 'test2' }
+                    {   qname => $IPC::Transit::test_qname1 },
+                    {   qname => $IPC::Transit::test_qname2 }
                 ]
             },{ match => {
                     a => 'b',
                     10 => 12,
                 },
                 forwards => [
-                    {   qname => 'test1' },
-                    {   qname => 'test2' }
+                    {   qname => $IPC::Transit::test_qname1 },
+                    {   qname => $IPC::Transit::test_qname2 }
                 ]
             }
         ]
     };
 
     ok IPC::Transit::Router::config_trans($config);
-    ok not IPC::Transit::receive(qname => 'test', nonblock => 1);
-    ok not IPC::Transit::receive(qname => 'test1', nonblock => 1);
-    ok not IPC::Transit::receive(qname => 'test2', nonblock => 1);
+    ok not IPC::Transit::receive(qname => $IPC::Transit::test_qname, nonblock => 1);
+    ok not IPC::Transit::receive(qname => $IPC::Transit::test_qname1, nonblock => 1);
+    ok not IPC::Transit::receive(qname => $IPC::Transit::test_qname2, nonblock => 1);
     ok IPC::Transit::Router::route_trans({a => 'b'});
-    ok not IPC::Transit::receive(qname => 'test', nonblock => 1);
-    ok not IPC::Transit::receive(qname => 'test1', nonblock => 1);
-    ok not IPC::Transit::receive(qname => 'test2', nonblock => 1);
+    ok not IPC::Transit::receive(qname => $IPC::Transit::test_qname, nonblock => 1);
+    ok not IPC::Transit::receive(qname => $IPC::Transit::test_qname1, nonblock => 1);
+    ok not IPC::Transit::receive(qname => $IPC::Transit::test_qname2, nonblock => 1);
     ok IPC::Transit::Router::route_trans({a => 'b', 10 => '12', x => 'y'});
-    ok not IPC::Transit::receive(qname => 'test', nonblock => 1);
-    ok my $m = IPC::Transit::receive(qname => 'test1', nonblock => 1);
+    ok not IPC::Transit::receive(qname => $IPC::Transit::test_qname, nonblock => 1);
+    ok my $m = IPC::Transit::receive(qname => $IPC::Transit::test_qname1, nonblock => 1);
     ok $m->{a} eq 'b';
     ok $m->{x} eq 'y';
-    ok $m = IPC::Transit::receive(qname => 'test2', nonblock => 1);
+    ok $m = IPC::Transit::receive(qname => $IPC::Transit::test_qname2, nonblock => 1);
     ok $m->{a} eq 'b';
     ok $m->{x} eq 'y';
 }
@@ -174,8 +174,8 @@ ok not IPC::Transit::Router::config_trans();
                     10 => 12,
                 },
                 forwards => [
-                    {   qname => 'test1' },
-                    {   qname => 'test2' }
+                    {   qname => $IPC::Transit::test_qname1 },
+                    {   qname => $IPC::Transit::test_qname2 }
                 ],
                 continue_processing => 1,
             },{ match => {
@@ -183,33 +183,33 @@ ok not IPC::Transit::Router::config_trans();
                     10 => 12,
                 },
                 forwards => [
-                    {   qname => 'test1' },
-                    {   qname => 'test2' }
+                    {   qname => $IPC::Transit::test_qname1 },
+                    {   qname => $IPC::Transit::test_qname2 }
                 ]
             }
         ]
     };
 
     ok IPC::Transit::Router::config_trans($config);
-    ok not IPC::Transit::receive(qname => 'test', nonblock => 1);
-    ok not IPC::Transit::receive(qname => 'test1', nonblock => 1);
-    ok not IPC::Transit::receive(qname => 'test2', nonblock => 1);
+    ok not IPC::Transit::receive(qname => $IPC::Transit::test_qname, nonblock => 1);
+    ok not IPC::Transit::receive(qname => $IPC::Transit::test_qname1, nonblock => 1);
+    ok not IPC::Transit::receive(qname => $IPC::Transit::test_qname2, nonblock => 1);
     ok IPC::Transit::Router::route_trans({a => 'b'});
-    ok not IPC::Transit::receive(qname => 'test', nonblock => 1);
-    ok not IPC::Transit::receive(qname => 'test1', nonblock => 1);
-    ok not IPC::Transit::receive(qname => 'test2', nonblock => 1);
+    ok not IPC::Transit::receive(qname => $IPC::Transit::test_qname, nonblock => 1);
+    ok not IPC::Transit::receive(qname => $IPC::Transit::test_qname1, nonblock => 1);
+    ok not IPC::Transit::receive(qname => $IPC::Transit::test_qname2, nonblock => 1);
     ok IPC::Transit::Router::route_trans({a => 'b', 10 => '12', x => 'y'});
-    ok not IPC::Transit::receive(qname => 'test', nonblock => 1);
-    ok my $m = IPC::Transit::receive(qname => 'test1', nonblock => 1);
+    ok not IPC::Transit::receive(qname => $IPC::Transit::test_qname, nonblock => 1);
+    ok my $m = IPC::Transit::receive(qname => $IPC::Transit::test_qname1, nonblock => 1);
     ok $m->{a} eq 'b';
     ok $m->{x} eq 'y';
-    ok $m = IPC::Transit::receive(qname => 'test1', nonblock => 1);
+    ok $m = IPC::Transit::receive(qname => $IPC::Transit::test_qname1, nonblock => 1);
     ok $m->{a} eq 'b';
     ok $m->{x} eq 'y';
-    ok $m = IPC::Transit::receive(qname => 'test2', nonblock => 1);
+    ok $m = IPC::Transit::receive(qname => $IPC::Transit::test_qname2, nonblock => 1);
     ok $m->{a} eq 'b';
     ok $m->{x} eq 'y';
-    ok $m = IPC::Transit::receive(qname => 'test2', nonblock => 1);
+    ok $m = IPC::Transit::receive(qname => $IPC::Transit::test_qname2, nonblock => 1);
     ok $m->{a} eq 'b';
     ok $m->{x} eq 'y';
 }
@@ -219,7 +219,7 @@ ok not IPC::Transit::Router::config_trans();
                     a => 'b',
                 },
                 forwards => [
-                    {   qname => 'test' }
+                    {   qname => $IPC::Transit::test_qname }
                 ],
                 changes => [
                     {   who => 'there' },
@@ -233,12 +233,12 @@ ok not IPC::Transit::Router::config_trans();
 
     ok IPC::Transit::Router::config_trans($config);
     ok IPC::Transit::Router::route_trans({a => 'b'});
-    ok my $m = IPC::Transit::receive(qname => 'test', nonblock => 1);
+    ok my $m = IPC::Transit::receive(qname => $IPC::Transit::test_qname, nonblock => 1);
     ok $m->{a} eq 'b';
     ok $m->{who} eq 'there';
     ok $m->{123} == 234;
     ok $m->{xray} eq 'kilo';
-    ok not IPC::Transit::receive(qname => 'test', nonblock => 1);
+    ok not IPC::Transit::receive(qname => $IPC::Transit::test_qname, nonblock => 1);
 }
 
 __END__
@@ -248,7 +248,7 @@ __END__
                     a => 'b',
                 },
                 forwards => [
-                    {   qname => 'test',
+                    {   qname => $IPC::Transit::test_qname,
                     }
                 ]
             }
@@ -258,14 +258,14 @@ __END__
     ok IPC::Transit::Router::config_trans($simple_route)->{routes}->[0]->{match}->{a} eq 'b';
 __END__
 #clean out the queue if there's something in it
-ok IPC::Transit::send(qname => 'test', message => { a => 'b' });
-ok my $m = IPC::Transit::receive(qname => 'test');
+ok IPC::Transit::send(qname => $IPC::Transit::test_qname, message => { a => 'b' });
+ok my $m = IPC::Transit::receive(qname => $IPC::Transit::test_qname);
 ok $m->{a} eq 'b';
 
 for(1..20) {
-    ok IPC::Transit::send(qname => 'test', message => { a => $_ });
+    ok IPC::Transit::send(qname => $IPC::Transit::test_qname, message => { a => $_ });
 }
 foreach my $ct (1..20) {
-    ok my $m = IPC::Transit::receive(qname => 'test');
+    ok my $m = IPC::Transit::receive(qname => $IPC::Transit::test_qname);
     ok $m->{a} == $ct;
 }

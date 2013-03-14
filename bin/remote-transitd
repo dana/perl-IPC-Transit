@@ -3,6 +3,21 @@
 use strict;use warnings;
 use IPC::Transit;
 use Data::Dumper;
+use Getopt::Std;
+
+$| = 1;
+
+my $opts = {};
+getopt('Pd', $opts);
+my $debug = 0;
+if($opts->{P}) {
+    $IPC::Transit::config_dir = $opts->{P};
+    print "Using alternative Transit config dir: $IPC::Transit::config_dir\n";
+}
+if($opts->{d}) {
+    $debug = $opts->{d};
+    print "Debug level $debug set\n";
+}
 
 while(1) {
     eval {

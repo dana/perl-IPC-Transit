@@ -2,22 +2,6 @@ Totally random thoughts and stream of consciousness.
 
 This stuff might be inaccurate, out of date, wrong and/or crazy.
 
-Serialization
-
-
-IPC::Transit::Serialize
-
-freeze()
-takes:  message
-        args to control freeze
-returns: fully serialized message
-
-thaw()
-takes: fully serialized message
-returns:    message
-
-
-
 
 
 The Message:

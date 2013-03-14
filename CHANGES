@@ -1,3 +1,5 @@
+0.5 Fri Mar 15 21:10:03 PDT 2013
+    - Complete conversion to the new, permanent wire protocol
 0.4 Sun Mar 10 13:01:01 PDT 2013
     - Very basic remote transit: cross box messages
 0.3 Thu May 17 05:46:38 PDT 2012

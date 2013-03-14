@@ -2,6 +2,14 @@
 
 use strict;use warnings;
 use IPC::Transit;
+use Getopt::Std;
+
+my $opts = {};
+getopt('P', $opts);
+if($opts->{P}) {
+    $IPC::Transit::config_dir = $opts->{P};
+    print "Using alternative Transit config dir: $IPC::Transit::config_dir\n";
+}
 
 my $format = '%-50s%-20s';
 my $info = IPC::Transit::stats();
