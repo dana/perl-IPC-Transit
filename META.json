@@ -44,14 +44,23 @@
    "provides" : {
       "IPC::Transit" : {
          "file" : "lib/IPC/Transit.pm",
-         "version" : "0.5"
+         "version" : "0.6"
       }
    },
    "release_status" : "unstable",
    "resources" : {
       "license" : [
          "http://dev.perl.org/licenses/"
-      ]
+      ],
+      "bugtracker" : {
+         "web" : "https://github.com/dana/perl-IPC-Transit/issues"
+      },
+      "homepage" : "https://metacpan.org/module/IPC::Transit",
+      "repository" : {
+         "type" : "git",
+         "url" : "git://github.com/dana/perl-IPC-Transit.git",
+         "web" : "https://github.com/dana/perl-IPC-Transit.git"
+      }
    },
-   "version" : "0.5"
+   "version" : "0.6"
 }

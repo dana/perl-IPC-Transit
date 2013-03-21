@@ -41,7 +41,7 @@ our $local_serializer_translate = {
     json => 'JSON',
     storable => 'Storable',
 };
-$VERSION = '0.5';
+$VERSION = '0.6';
 
 sub send {
     my $args;

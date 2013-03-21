@@ -1,3 +1,6 @@
+0.6 Wed Mar 20 19:01:23 PDT 2013
+    - Add second argument to ftok; *BSD and others seem to require this
+    - Add various github resources
 0.5 Fri Mar 15 21:10:03 PDT 2013
     - Complete conversion to the new, permanent wire protocol
 0.4 Sun Mar 10 13:01:01 PDT 2013
