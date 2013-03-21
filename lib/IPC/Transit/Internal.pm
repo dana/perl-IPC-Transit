@@ -135,7 +135,7 @@ sub _get_queue_id {
         #otherwise, we need to make one
         {   my $file = _get_transit_config_dir() . "/$qname";
             open my $fh, '>', $file or die "IPC::Transit::Internal::_get_queue_id: failed to open $file for writing: $!";
-            my $new_qid = IPC::SysV::ftok($file);
+            my $new_qid = IPC::SysV::ftok($file, 1);
             print $fh "qid=$new_qid\n";
             print $fh "qname=$qname\n";
             close $fh;
