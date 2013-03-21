@@ -35,3 +35,8 @@ t/router_basic.t
 TODO
 t/bug-slashes.t
 t/extended.t
+t/00perlcritic.t
+t/00perlcriticprogressive.t
+t/00perltidy.t
+t/00pod.t
+t/00podcover.t
