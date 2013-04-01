@@ -1,3 +1,6 @@
+0.61 Sun Mar 31 20:40:18 PDT 2013
+    - Moved to Module::Starter
+    - Fixed broken dependencies
 0.6 Wed Mar 20 19:01:23 PDT 2013
     - Add second argument to ftok; *BSD and others seem to require this
     - Add various github resources
