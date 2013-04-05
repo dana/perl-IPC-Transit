@@ -1,10 +1,12 @@
 package IPC::Transit;
 
 use strict;use warnings;
-use Data::Dumper;
-use HTTP::Lite;
-use Data::Serializer::Raw;
+#use HTTP::Lite;
 use IPC::Transit::Internal;
+use Storable;
+use Data::Dumper;
+use JSON;
+use HTTP::Lite;
 
 use vars qw(
     $VERSION
@@ -22,6 +24,7 @@ our $wire_header_args = {
         json => 1,
         yaml => 1,
         storable => 1,
+        dumper => 1,
     },
     c => {  #compression
         zlib => 1,
@@ -37,11 +40,7 @@ our $std_args = {
     qname => 1,
     nowait => 1,
 };
-our $local_serializer_translate = {
-    json => 'JSON',
-    storable => 'Storable',
-};
-$VERSION = '0.61';
+$VERSION = '0.7';
 
 sub send {
     my $args;
@@ -192,11 +191,14 @@ sub pack_message {
     $args->{serialized_wire_data} = "$l:$args->{serialized_wire_meta_data}$args->{serialized_message}";
     return $args->{serialized_wire_data};
 }
+
 sub unpack_data {
     my $args = shift;
     my ($length, $header_and_message);
-    if($args->{serialized_wire_data} =~ /^(\d+):(.*)$/) {
-        $length = $1; $header_and_message = $2;
+    my $s = $args->{serialized_wire_data};
+    if($s =~ s/^(\d+)://) {
+        $length = $1;
+        $header_and_message = $s;
     } else {
         die 'passed serialized_wire_data malformed';
     }
@@ -206,6 +208,7 @@ sub unpack_data {
     thaw($args);
     return $args;
 }
+
 sub serialize_wire_meta {
     my $args = shift;
     my $s = '';
@@ -224,6 +227,7 @@ sub serialize_wire_meta {
     chop $s; #no trailing ,
     $args->{serialized_wire_meta_data} = $s;
 }
+
 sub deserialize_wire_meta {
     my $args = shift;
     my $h = $args->{serialized_header};
@@ -235,23 +239,32 @@ sub deserialize_wire_meta {
     $args->{wire_headers} = $ret;
 }
 
-#hard-coded serializer for now
 sub freeze {
     my $args = shift;
-    my $s = Data::Serializer::Raw->new(
-        serializer => 'JSON',
-        options => {},
-    );
-    return $s->serialize($args->{message});
+    if(not defined $args->{serializer} or $args->{serializer} eq 'json') {
+        return encode_json $args->{message};
+    } elsif($args->{serializer} eq 'dumper') {
+        return Data::Dumper::Dumper $args->{message};
+    } elsif($args->{serializer} eq 'storable') {
+        return Storable::freeze $args->{message};
+    } else {
+        die "freeze: undefined serializer: $args->{serializer}";
+    }
 }
 
 sub thaw {
     my $args = shift;
-    my $s = Data::Serializer::Raw->new(
-        serializer => 'JSON',
-        options => {},
-    );
-    return $args->{message} = $s->deserialize($args->{serialized_message});
+    if(not defined $args->{wire_headers}->{s} or $args->{wire_headers}->{s} eq 'json') {
+        return $args->{message} = decode_json($args->{serialized_message});
+    } elsif($args->{wire_headers}->{s} eq 'dumper') {
+        our $VAR1;
+        eval $args->{serialized_message};
+        return $args->{message} = $VAR1;
+    } elsif($args->{wire_headers}->{s} eq 'storable') {
+        return $args->{message} = Storable::thaw($args->{serialized_message});
+    } else {
+        die "thaw: undefined serializer: $args->{wire_headers}->{s}";
+    }
 }
 1;
 

@@ -1,3 +1,7 @@
+0.7 Sun Apr  7 17:26:15 PDT 2013
+    - Re-added multiple serializer support
+    - Added benchmarks for various serializers
+    - Fixed some bugs around not handling arbitrary data
 0.61 Sun Mar 31 20:40:18 PDT 2013
     - Moved to Module::Starter
     - Fixed broken dependencies

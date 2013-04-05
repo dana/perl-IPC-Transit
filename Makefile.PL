@@ -31,10 +31,10 @@ build_requires (
 requires (
     'Data::Dumper' => 0,
     'HTTP::Lite' => 0,
-    'Data::Serializer::Raw' => 0,
     'IPC::SysV' => 0,
     'IPC::Msg' => 0,
     'POSIX' => 0,
+    'JSON' => 0,
     'Storable' => 0,
     'Getopt::Std' => 0,
     'HTTP::Server::Simple::CGI' => 0,

@@ -4,6 +4,7 @@ bin/remote-transitd
 bin/rtrans
 bin/strans
 CHANGES
+docs/svperl/README
 docs/svperl/slidegen
 docs/svperl/slides.txt
 ex/monitor/gather.pl
@@ -30,7 +31,6 @@ LICENSE
 Makefile.PL
 MANIFEST			This list of files
 META.yml
-NOTES
 README
 t/00perlcritic.t
 t/00perlcriticprogressive.t
@@ -39,8 +39,10 @@ t/00pod.t
 t/00podcover.t
 t/arbitrary-meta-data.t
 t/basic.t
+t/benchmark.t
 t/bug-slashes.t
 t/check_serializer_storable.t
+t/clean.t
 t/default_blocking.t
 t/extended.t
 t/full-remote.t
