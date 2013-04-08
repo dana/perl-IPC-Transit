@@ -10,6 +10,7 @@ docs/svperl/slides.txt
 ex/monitor/gather.pl
 ex/monitor/logtail.pl
 ex/monitor/process.pl
+ex/monitor/README
 ex/monitor/routes.json
 inc/Module/AutoInstall.pm
 inc/Module/Install.pm
@@ -24,7 +25,6 @@ inc/Module/Install/Win32.pm
 inc/Module/Install/WriteAll.pm
 lib/IPC/Transit.pm
 lib/IPC/Transit/Internal.pm
-lib/IPC/Transit/Router.pm
 lib/IPC/Transit/Test.pm
 lib/IPC/Transit/Test/Example.pm
 LICENSE
@@ -49,5 +49,4 @@ t/full-remote.t
 t/local_delivery.t
 t/nonblocking.t
 t/queue-management.t
-t/router_basic.t
 TODO

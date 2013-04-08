@@ -40,7 +40,7 @@ our $std_args = {
     qname => 1,
     nowait => 1,
 };
-$VERSION = '0.71';
+$VERSION = '0.72';
 
 sub send {
     my $args;
