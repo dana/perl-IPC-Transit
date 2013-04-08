@@ -1,7 +1,7 @@
 package IPC::Transit;
 
 use strict;use warnings;
-#use HTTP::Lite;
+use 5.006;
 use IPC::Transit::Internal;
 use Storable;
 use Data::Dumper;
@@ -40,7 +40,7 @@ our $std_args = {
     qname => 1,
     nowait => 1,
 };
-$VERSION = '0.7';
+$VERSION = '0.71';
 
 sub send {
     my $args;
