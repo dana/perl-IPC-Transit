@@ -2,6 +2,7 @@ use 5.006;
 use strict;
 use warnings FATAL => 'all';
 use inc::Module::Install;
+use inc::Module::Install::Scripts;
 
 name     'IPC-Transit';
 all_from 'lib/IPC/Transit.pm';
@@ -27,6 +28,12 @@ configure_requires (
 build_requires (
    'Test::More' => 0,
 );
+
+install_script( 'bin/qtrans',
+                'bin/remote-transitd',
+                'bin/remote-transit-gateway',
+                'bin/rtrans',
+                'bin/strans');
 
 requires (
     'Data::Dumper' => 0,

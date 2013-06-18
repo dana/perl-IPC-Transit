@@ -4,7 +4,7 @@ use strict;use warnings;
 use Data::Dumper;
 use lib '../lib';
 use lib 'lib';
-use Test::More tests => 65;
+use Test::More tests => 36;
 
 use_ok('IPC::Transit') or exit;
 use_ok('IPC::Transit::Test') or exit;
@@ -14,10 +14,11 @@ ok IPC::Transit::local_queue(qname => $q);
 IPC::Transit::send(qname => $q, message => { a => 'b' });
 ok IPC::Transit::stat(qname => $q)->{qnum} == 1;
 ok my $m = IPC::Transit::receive(qname => $q)->{a} eq 'b';
-for(1..20) {
+ok IPC::Transit::stat(qname => $q)->{qnum} == 0;
+for(1..10) {
     ok IPC::Transit::send(qname => 'test_local_queue', message => { a => $_ });
 }
-foreach my $ct (1..20) {
+foreach my $ct (1..10) {
     ok my $m = IPC::Transit::receive(qname => 'test_local_queue');
     ok $m->{a} == $ct;
 }

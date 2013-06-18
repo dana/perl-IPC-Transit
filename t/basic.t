@@ -4,7 +4,7 @@ use strict;use warnings;
 
 use lib '../lib';
 use lib 'lib';
-use Test::More tests => 70;
+use Test::More tests => 40;
 
 use_ok('IPC::Transit') or exit;
 use_ok('IPC::Transit::Test') or exit;
@@ -15,10 +15,10 @@ ok IPC::Transit::send(qname => $IPC::Transit::test_qname, message => { a => 'b' 
 ok my $m = IPC::Transit::receive(qname => $IPC::Transit::test_qname, nowait => 1);
 ok $m->{a} eq 'b';
 
-for(1..20) {
+for(1..10) {
     ok IPC::Transit::send(qname => $IPC::Transit::test_qname, message => { a => $_ });
 }
-foreach my $ct (1..20) {
+foreach my $ct (1..10) {
     ok my $m = IPC::Transit::receive(qname => $IPC::Transit::test_qname, nowait => 1);
     ok $m->{a} == $ct;
 }

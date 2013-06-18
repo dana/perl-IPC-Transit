@@ -1,4 +1,4 @@
-#!perl
+#!/usr/bin/env perl
 
 use strict;use warnings;
 use IPC::Transit;
@@ -24,4 +24,8 @@ die "the perl message passed in first argument is not a reference"
 die "the perl message passed in first argument is not a HASH reference"
     unless ref $message eq 'HASH';
 
-print IPC::Transit::send(qname => $qname, message => $message, destination => $destination), "\n";
+if($destination) {
+    print IPC::Transit::send(qname => $qname, message => $message, destination => $destination), "\n";
+} else {
+    print IPC::Transit::send(qname => $qname, message => $message), "\n";
+}

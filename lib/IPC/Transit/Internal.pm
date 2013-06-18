@@ -41,6 +41,7 @@ sub _stat {
         $ret->{shift @heads} = $item;
     }
     $ret->{qname} = $args{qname};
+    $ret->{qid} = $qid;
     return $ret;
 }
 }

@@ -40,42 +40,112 @@ our $std_args = {
     qname => 1,
     nowait => 1,
 };
-$VERSION = '0.72';
+$VERSION = '0.73';
 
 sub send {
-    my $args;
+    my %args;
     {   my @args = @_;
         die 'IPC::Transit::send: even number of arguments required'
             if scalar @args % 2;
-        my %args = @args;
-        $args = \%args;
+        %args = @args;
     }
-    my $qname = $args->{qname};
+    my $qname = $args{qname};
     die "IPC::Transit::send: parameter 'qname' required"
         unless $qname;
     die "IPC::Transit::send: parameter 'qname' must be a scalar"
         if ref $qname;
-    my $message = $args->{message};
+    my $message = $args{message};
     die "IPC::Transit::send: parameter 'message' required"
         unless $message;
     die "IPC::Transit::send: parameter 'message' must be a HASH reference"
         if ref $message ne 'HASH';
     $message->{'.ipc_transit_meta'} = {} unless $message->{'.ipc_transit_meta'};
     $message->{'.ipc_transit_meta'}->{send_ts} = time;
-    if($args->{destination}) {
-        $args->{destination_qname} = $args->{qname};
-        $args->{qname} = 'transitd';
-        $args->{ttl} = 9 unless $args->{ttl};
+    if($args{destination}) {
+        $args{destination_qname} = $args{qname};
+        $args{qname} = 'transitd';
+        $args{ttl} = 9 unless $args{ttl};
     }
 
-    if($local_queues and $local_queues->{$qname}) {
-        push @{$local_queues->{$qname}}, $args;
-        return $args;
+    #begin the hard work of figuring out if this message should be sent as
+    #local delivery or not.
+    #overall default is to non-local delivery
+
+    #the overrides in .ipc_transit_meta in the message takes precidence
+    #over previous calls to ::local_queue and/or ::no_local_queue
+
+    #insides of overrides, the force_local and force_non_local
+    #take precidence over the default_to.
+
+    #algo
+    #1. absolute override goes to the invocation: override_local/
+    #   override_non_local
+    #2. next, look at force_* in the message.  If they conflict, then we go
+    #   with force_non_local.
+    #3. lacking any instructions there, we go with the default_to directive,
+    #   if any, in the message
+    #4. lacking that, we go with what's been set with ::local_queue and/or
+    #  ::no_local_queue
+    #5. And finally, non-local delivery
+
+
+    #1a:
+    return _deliver_non_local($qname, \%args) if $args{override_local};
+
+    #1b:
+    return _deliver_local($qname, \%args) if $args{override_non_local};
+
+    #2a:
+    if(     $message->{'.ipc_transit_meta'}->{overrides} and
+            $message->{'.ipc_transit_meta'}->{overrides}->{force_non_local} and
+            $message->{'.ipc_transit_meta'}->{overrides}->{force_non_local}->{$args{qname}}) {
+        return _deliver_non_local($qname, \%args);
     }
 
+    #2b:
+    if(     $message->{'.ipc_transit_meta'}->{overrides} and
+            $message->{'.ipc_transit_meta'}->{overrides}->{force_local} and
+            $message->{'.ipc_transit_meta'}->{overrides}->{force_local}->{$args{qname}}) {
+        return _deliver_local($qname, \%args);
+    }
+
+    #3a:
+    if(     $message->{'.ipc_transit_meta'}->{overrides} and
+            $message->{'.ipc_transit_meta'}->{overrides}->{default_to} and
+            $message->{'.ipc_transit_meta'}->{overrides}->{default_to} eq 'local'
+    ) {
+        return _deliver_local($qname, \%args);
+    }
+
+    #3b:
+    if(     $message->{'.ipc_transit_meta'}->{overrides} and
+            $message->{'.ipc_transit_meta'}->{overrides}->{default_to} and
+            $message->{'.ipc_transit_meta'}->{overrides}->{default_to} eq 'non-local'
+    ) {
+        return _deliver_non_local($qname, \%args);
+    }
+
+    #4:
+    if(     $local_queues and
+            $local_queues->{$qname}) {
+        return _deliver_local($qname, \%args);
+    }
+
+    #5:
+    return _deliver_non_local($qname, \%args);
+}
+
+sub _deliver_local {
+    my ($qname, $args) = @_;
+    push @{$local_queues->{$qname}}, $args;
+    return $args;
+}
+
+sub _deliver_non_local {
+    my ($qname, $args) = @_;
     my $to_queue = IPC::Transit::Internal::_initialize_queue(%$args);
     pack_message($args);
-    return $to_queue->snd(1,$args->{serialized_wire_data}, IPC::Transit::Internal::_get_flags('nonblocks'));
+    return $to_queue->snd(1,$args->{serialized_wire_data}, IPC::Transit::Internal::_get_flags('nonblock'));
 }
 
 sub stats {
@@ -90,7 +160,7 @@ sub stat {
         %args = @args;
     }
     my $qname = $args{qname};
-    if($local_queues and $local_queues->{$qname}) {
+    if(not $args{override_local} and $local_queues and $local_queues->{$qname}) {
         return {
             qnum => scalar @{$local_queues->{$qname}}
         };
@@ -110,11 +180,12 @@ sub receive {
         %args = @args;
     }
     my $qname = $args{qname};
+
     die "IPC::Transit::receive: parameter 'qname' required"
         unless $qname;
     die "IPC::Transit::receive: parameter 'qname' must be a scalar"
         if ref $qname;
-    if($local_queues and $local_queues->{$qname}) {
+    if(not $args{override_local} and $local_queues and $local_queues->{$qname}) {
         my $m = shift @{$local_queues->{$qname}};
         return $m->{message};
     }
@@ -122,7 +193,7 @@ sub receive {
     $flags = IPC::Transit::Internal::_get_flags('nowait') if $args{nonblock};
     my $from_queue = IPC::Transit::Internal::_initialize_queue(%args);
     my $serialized_wire_data;
-    $from_queue->rcv($serialized_wire_data, 1024000, 0, $flags);
+    $from_queue->rcv($serialized_wire_data, 10240000, 0, $flags);
     return undef unless $serialized_wire_data;
     my $message = {
         serialized_wire_data => $serialized_wire_data,
@@ -159,6 +230,18 @@ sub post_remote {
     return $req;
 }
 
+sub no_local_queue {
+    my %args;
+    {   my @args = @_;
+        die 'IPC::Transit::no_local_queue: even number of arguments required'
+            if scalar @args % 2;
+        %args = @args;
+    }
+    my $qname = $args{qname};
+    delete $local_queues->{$qname};
+    return 1;
+}
+
 sub local_queue {
     my %args;
     {   my @args = @_;
@@ -168,7 +251,7 @@ sub local_queue {
     }
     my $qname = $args{qname};
     $local_queues = {} unless $local_queues;
-    $local_queues->{$qname} = [];
+    $local_queues->{$qname} = [] unless $local_queues->{$qname};
     return 1;
 }
 
@@ -353,12 +436,15 @@ scheme that module supports can be used here.
 NB: there is no need to define the serialization type in receive.  It is
 automatically detected and utilized.
 
-=head2 receive(qname => 'some_queue', nonblock => [0|1])
+=head2 receive(qname => 'some_queue', nonblock => [0|1], override_local => [0|1])
 
 This function fetches a hash reference from 'some_queue' and returns it.
 By default, it will block until a reference is available.  Setting nonblock
 to a true value will cause this to return immediately with 'undef' is
 no messages are available.
+
+override_local defaults to false; if set to true, the receive will always
+do a non-process local receive.
 
 
 =head2 stat(qname => 'some_queue')

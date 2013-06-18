@@ -23,6 +23,7 @@ inc/Module/Install/Makefile.pm
 inc/Module/Install/Metadata.pm
 inc/Module/Install/Win32.pm
 inc/Module/Install/WriteAll.pm
+inc/Module/Install/Scripts.pm
 lib/IPC/Transit.pm
 lib/IPC/Transit/Internal.pm
 lib/IPC/Transit/Test.pm
@@ -49,4 +50,5 @@ t/full-remote.t
 t/local_delivery.t
 t/nonblocking.t
 t/queue-management.t
+t/override_local_deliver.t
 TODO
