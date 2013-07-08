@@ -37,4 +37,4 @@ resources:
   homepage: https://metacpan.org/module/IPC::Transit
   license: http://www.perlfoundation.org/artistic_license_2_0
   repository: git://github.com/dana/perl-IPC-Transit.git
-version: 0.73
+version: 0.74
