@@ -9,7 +9,6 @@ use JSON;
 use HTTP::Lite;
 
 use vars qw(
-    $VERSION
     $config_file $config_dir
     $local_queues
 );
@@ -40,7 +39,6 @@ our $std_args = {
     qname => 1,
     nowait => 1,
 };
-$VERSION = '0.74';
 
 sub send {
     my %args;

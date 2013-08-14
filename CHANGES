@@ -1,7 +1,10 @@
+{{$NEXT}}
+
+1.132260  2013-08-13 21:31:52 America/Los_Angeles
+    - Move to Dist::Zilla
 0.74 Sun Jul  7 17:03:13 PDT 2013
     - change standalone script shebang lines to #!perl, per
       david@cantrell.org.uk
-
 0.73 Thu May  2 19:14:06 PDT 2013
     - Tweaked the tests to work on boxes with smaller message queue allowances
     - Fixed IPC::Transit::send to correctly default to non-block
