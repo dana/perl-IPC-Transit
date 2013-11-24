@@ -1,5 +1,7 @@
-{{$NEXT}}
-
+{{$NEXT}} Sun Nov 24 12:44:08 PST 2013
+    - Fix one class of Test Failures by forcing prereq of
+      HTTP::Server::Simple::CGI
+    - Trivial test improvement
 1.132260  2013-08-13 21:31:52 America/Los_Angeles
     - Move to Dist::Zilla
 0.74 Sun Jul  7 17:03:13 PDT 2013
