@@ -4,7 +4,7 @@ use strict;use warnings;
 
 use lib '../lib';
 use lib 'lib';
-use Test::More tests => 5;
+use Test::More;
 
 use_ok('IPC::Transit') or exit;
 use_ok('IPC::Transit::Test') or exit;
@@ -21,7 +21,7 @@ foreach my $serializer ('json', 'storable', 'dumper') {
             message => { a => $ct },
             serializer => $serializer,
             compression => 'none');
-        my $ret = IPC::Transit::receive(qname => $IPC::Transit::test_qname);
+        ok my $ret = IPC::Transit::receive(qname => $IPC::Transit::test_qname);
         die "On count $ct but received $ret->{a}"
             if $ct != $ret->{a};
     }
@@ -32,3 +32,4 @@ foreach my $serializer ('json', 'storable', 'dumper') {
         unless $run_time;
     ok 1, "serializer $serializer handled $messages_per_second messages per second";
 }
+done_testing();
