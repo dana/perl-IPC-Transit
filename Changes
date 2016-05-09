@@ -1,4 +1,6 @@
 {{$NEXT}}
+
+1.161300  2016-05-09 16:18:28-07:00 America/Los_Angeles
     - Apologies in advance for a big increase in dependencies.
     - Changed command-line utilities rtrans and strans to print and parse
       JSON instead of Perl, respectively.
