@@ -4,12 +4,7 @@ IPC::Transit - A framework for high performance message passing
 
 # NOTES
 
-This module is wire incompatable with previous releases.  The wire
-protocol in 0.4 and before was meant as a prototype and naive.
-
-This is the final wire protocol.
-
-The serialization is currently hard-coded to JSON.
+The serialization is currently hard-coded to https://metacpan.org/pod/Sereal
 
 # SYNOPSIS
 
@@ -25,13 +20,12 @@ The serialization is currently hard-coded to JSON.
     IPC::Transit::send(qname => 'test', message => { a => 'b' }, destination => 'some.other.box.com');
 
     #On 'some.other.box.com':
-    remote-transit-gateway &  #run 'incoming' transitd gateway
+    plackup --port 9816 $(which remote-transit-gateway.psgi) &  #run 'incoming' transitd gateway
     my $message = IPC::Transit::receive(qname => 'test');
 
 # DESCRIPTION
 
 This queue framework has the following goals:
-    
 
 - Serverless
 - High Throughput
@@ -74,8 +68,6 @@ no messages are available.
 
 override\_local defaults to false; if set to true, the receive will always
 do a non-process local receive.
-
-
 
 ## stat(qname => 'some\_queue')
 
@@ -122,7 +114,7 @@ kind of support as long as it doesn't greatly affect the primary goals.
 
 # COPYRIGHT
 
-Copyright (c) 2012, 2013 Dana M. Diederich. All Rights Reserved.
+Copyright (c) 2012, 2013, 2016 Dana M. Diederich. All Rights Reserved.
 
 # LICENSE
 

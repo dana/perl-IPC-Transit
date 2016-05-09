@@ -1,4 +1,19 @@
 {{$NEXT}}
+    - Apologies in advance for a big increase in dependencies.
+    - Changed command-line utilities rtrans and strans to print and parse
+      JSON instead of Perl, respectively.
+    - Increased the amount of information qtrans reports.
+    - Generally refactored remote transit to be far more CPU and memory
+      efficient.
+    - Added serialization type Sereal, which is the fastest available for
+      Perl at this time.
+    - (INCOMPATIBLE) Changed default serialization from JSON to Sereal.  Be
+      careful with this one if you use IPC::Transit between different
+      languages.  You probably want to specify JSON in that case.
+    - Added large message handling via local file cache.
+    - Added some simplistic DNS caching.
+    - Removed some ancient and needless tests.
+    - Ported the reference remote transit gateway program to use plack.
 
 1.133280  2013-11-24 12:45:27 America/Los_Angeles Sun Nov 24 12:44:08 PST 2013
     - Fix one class of Test Failures by forcing prereq of

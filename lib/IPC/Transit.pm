@@ -6,21 +6,67 @@ use IPC::Transit::Internal;
 use Storable;
 use Data::Dumper;
 use JSON;
+use Sereal::Encoder;
+use Sereal::Decoder qw(looks_like_sereal decode_sereal);
 use HTTP::Lite;
+use File::Temp qw/tempfile/;
+use Tie::DNS;
 
 use vars qw(
-    $config_file $config_dir
+    $config_file $config_dir $large_transit_message_dir
     $local_queues
 );
 
+our $large_transit_message_dir = '/tmp/transit_large_messages'
+    unless $IPC::Transit::large_transit_message_dir;
+
+##sorry, gotta have this temp dir in a known location
+mkdir $large_transit_message_dir unless -d $large_transit_message_dir;
+chmod 0777, $large_transit_message_dir;  ##sorry, it has to be 0777 :(
+
 our $wire_header_arg_translate = {
     destination => 'd',
+    destination_qname => 'q',
     compression => 'c',
-    serializer => 's'
+    serializer => 's',
+    message_length => 'l',
+    local_filename => 'f',
+    ttl => 't',
 };
+our $max_message_size = 4096 unless $IPC::Transit::max_message_size;
+
+{
+my %dns;
+my $cache;
+my $ts;
+sub cached_dns {
+    my $thing = shift;
+    return $thing unless $thing;
+    if(not $ts) {
+        $ts = time;
+        $cache = {};
+        tie %dns, 'Tie::DNS' unless %dns;
+    }
+    if(time > $ts + 10) {
+        $ts = time;
+        $cache = {};
+    }
+    my $ret = eval {
+        local $SIG{ALRM} = sub { die "timed out\n"; };
+        alarm 2;
+        return $dns{$thing};
+    };
+    alarm 0;
+    $ret = $thing unless $ret;
+    return $ret;
+}
+}
+
+#This validates some allowed values of wire header arguments
 our $wire_header_args = {
     s => {  #serializer
         json => 1,
+        sereal => 1,
         yaml => 1,
         storable => 1,
         dumper => 1,
@@ -33,6 +79,9 @@ our $wire_header_args = {
     d => 1, #destination address
     t => 1, #hop TTL
     q => 1, #destination qname
+    l => 1, #length of the message itself
+    f => 1, #local_filename, optionally a path on the filesystem where the message can be found
+    t => 1, #Time To Live
 };
 our $std_args = {
     message => 1,
@@ -60,9 +109,21 @@ sub send {
     $message->{'.ipc_transit_meta'} = {} unless $message->{'.ipc_transit_meta'};
     $message->{'.ipc_transit_meta'}->{send_ts} = time;
     if($args{destination}) {
+        #let's take a stab at efficiently getting destination to either an
+        #IP address or a FQDN
+        #If destination has less then tree .'s in it, then we will do a DNS
+        #lookup on it, and if that returns anything, replace it
+        if(not $args{no_dns_normalize}) {
+            if($args{destination} =~ tr/\./\./ < 3) {
+                my $new = cached_dns($args{destination});
+                $args{destination} = $new if $new;
+            }
+        }
         $args{destination_qname} = $args{qname};
         $args{qname} = 'transitd';
-        $args{ttl} = 9 unless $args{ttl};
+        $args{ttl} = '9' unless $args{ttl};
+
+        return _deliver_non_local($qname, \%args);
     }
 
     #begin the hard work of figuring out if this message should be sent as
@@ -139,11 +200,32 @@ sub _deliver_local {
     return $args;
 }
 
+sub _get_tmp_file {
+    my ($fh, $filename) = tempfile(SUFFIX => '.transit', DIR => $large_transit_message_dir);
+    die 'failed to create tmpfile' unless -e $filename;
+    return ($fh, $filename);
+}
+
+
 sub _deliver_non_local {
     my ($qname, $args) = @_;
     my $to_queue = IPC::Transit::Internal::_initialize_queue(%$args);
-    pack_message($args);
-    return $to_queue->snd(1,$args->{serialized_wire_data}, IPC::Transit::Internal::_get_flags('nonblock'));
+    eval {
+        local $SIG{ALRM} = sub { die "timed out\n"; };
+        alarm 2;
+        pack_message($args);
+    };
+    alarm 0;
+    if($@) {
+        print STDERR "IPC::Transit::_deliver_non_local: pack_message failed: $@\n";
+        unlink $args->{local_filename}
+            if $args->{local_filename} and -e $args->{local_filename};
+        return undef;
+    }
+    my $ret = $to_queue->snd(1,$args->{serialized_wire_data}, IPC::Transit::Internal::_get_flags('nonblock'));
+    unlink $args->{local_filename}
+        if not $ret and $args->{local_filename};
+    return $ret;
 }
 
 sub stats {
@@ -183,31 +265,89 @@ sub receive {
         unless $qname;
     die "IPC::Transit::receive: parameter 'qname' must be a scalar"
         if ref $qname;
-    if(not $args{override_local} and $local_queues and $local_queues->{$qname}) {
+    if(     not $args{override_local} and
+            $local_queues and
+            $local_queues->{$qname}) {
         my $m = shift @{$local_queues->{$qname}};
         return $m->{message};
     }
-    my $flags = 0;
-    $flags = IPC::Transit::Internal::_get_flags('nowait') if $args{nonblock};
-    my $from_queue = IPC::Transit::Internal::_initialize_queue(%args);
-    my $serialized_wire_data;
-    $from_queue->rcv($serialized_wire_data, 10240000, 0, $flags);
-    return undef unless $serialized_wire_data;
-    my $message = {
-        serialized_wire_data => $serialized_wire_data,
-    };
-    unpack_data($message);
-    if($message->{message}->{'.ipc_transit_meta'} and $message->{message}->{'.ipc_transit_meta'}->{destination_qname}) {
-        #this message is destined for a queue that is different
-        #than the one it landed on. Most likely a remote transit
-        #this means that we are likely running inside remote-transitd, and
-        #we need to post out
-        return post_remote($message);
-    }
-    if($args{raw}) {
-        return $message;
-    } else {
+    my $ret = eval {
+        my $flags = IPC::Transit::Internal::_get_flags('nowait') if $args{nonblock};
+        my $from_queue = IPC::Transit::Internal::_initialize_queue(%args);
+        my $ref = { #just doing this so we can pass the possibly big serialized
+                #data around as a reference
+            serialized_wire_data => '',
+        };
+        if(not $from_queue->rcv($ref->{serialized_wire_data}, 102400000, 0, $flags)) {
+            return undef;
+        }
+        #legacy
+        if($ref->{serialized_wire_data} =~ /^file:(.*)/) {
+            my $filename = $1;
+            eval {
+                local $SIG{ALRM} = sub { die "timed out\n"; };
+                alarm 2;
+                open my $fh, '<', $filename
+                    or die "failed to open $filename for reading: $!";
+                read $fh, $ref->{serialized_wire_data}, 102400000
+                    or die "failed to read from $filename: $!";
+                close $fh or die "failed to close $filename: $!";
+            };
+            alarm 0;
+            unlink $filename;
+            if($@) {
+                print STDERR "legacy read from $filename failed: $@";
+                return undef;
+            }
+        }
+        if(not defined $ref->{serialized_wire_data}) {
+            print STDERR "IPC::Transit::receive: received message had no data";
+            return undef;
+        }
+
+        my ($header_length, $wire_headers) = _parse_wire_header($ref);
+        if(not defined $wire_headers) {
+            print STDERR 'IPC::Transit::receive: received message had no wire headers: ' . substr($ref->{serialized_wire_data}, 0, 30) . "\n";
+            return undef;
+        }
+        if(not defined $header_length) {
+            print STDERR 'IPC::Transit::receive: received message had no header length: ' . substr($ref->{serialized_wire_data}, 0, 30) . "\n";
+            return undef;
+        }
+        sync_serialized_wire_data($wire_headers, $ref);
+
+        my $message = {
+            wire_headers => $wire_headers,
+            serialized_message => substr(
+                $ref->{serialized_wire_data},
+                $header_length + length($header_length) + 1,
+#                $wire_headers->{l}
+                9999999
+            ),
+        };
+        return undef unless _thaw($message);
+
+        return $message if $args{raw};
         return $message->{message};
+    };
+    die $@ if $@;
+    return $ret;
+}
+
+sub sync_serialized_wire_data {
+    my ($wire_headers, $ref) = @_;
+    if($wire_headers->{f} and -r $wire_headers->{f}) {
+        eval {
+            local $SIG{ALRM} = sub { die "timed out\n"; };
+            alarm 5;
+            open my $fh, '<', $wire_headers->{f}
+                or die "failed to open $wire_headers->{f} for reading: $!";
+            read $fh, $ref->{serialized_wire_data}, 1024000000
+                or die "failed to read from $wire_headers->{f}: $!";
+            close $fh or die "failed to close $wire_headers->{f}: $!";
+        };
+        alarm 0;
+        unlink $wire_headers->{f};
     }
 }
 
@@ -223,8 +363,12 @@ sub post_remote {
     };
     $http->prepare_post($vars);
     my $url = 'http://' . $message->{message}->{'.ipc_transit_meta'}->{destination} . ':9816/message';
-    my $req = $http->request($url)
-        or die "Unable to get document: $!";
+    my $req;
+    eval {
+        $req  = $http->request($url)
+            or die "Unable to get document: $!";
+    };
+    print STDERR "IPC::Transit::post_remote: (\$url=$url) failed: $@\n" if $@;
     return $req;
 }
 
@@ -240,6 +384,28 @@ sub no_local_queue {
     return 1;
 }
 
+sub queue_exists {
+    my $qname = shift;
+    return IPC::Transit::Internal::_queue_exists($qname);
+}
+
+sub _parse_wire_header {
+    my $ref = shift;
+    if($ref->{serialized_wire_data} !~ /^(\d+)/sm) {
+        print STDERR 'IPC::Transit::_parse_wire_header: malformed message received: ' . substr($ref->{serialized_wire_data}, 0, 60) . "\n";
+        return (undef, undef);
+    }
+    my $header_length = $1;
+    return (
+        $header_length,
+        deserialize_wire_meta(
+            substr( $ref->{serialized_wire_data},
+                    length($header_length) + 1,
+                    $header_length
+            )
+        ),
+    );
+}
 sub local_queue {
     my %args;
     {   my @args = @_;
@@ -266,28 +432,29 @@ sub pack_message {
         next if $std_args->{$key};
         $args->{message}->{'.ipc_transit_meta'}->{$key} = $args->{$key};
     }
-    $args->{serialized_message} = freeze($args);
-    serialize_wire_meta($args);
-    my $l = length $args->{serialized_wire_meta_data};
-    $args->{serialized_wire_data} = "$l:$args->{serialized_wire_meta_data}$args->{serialized_message}";
-    return $args->{serialized_wire_data};
-}
-
-sub unpack_data {
-    my $args = shift;
-    my ($length, $header_and_message);
-    my $s = $args->{serialized_wire_data};
-    if($s =~ s/^(\d+)://) {
-        $length = $1;
-        $header_and_message = $s;
-    } else {
-        die 'passed serialized_wire_data malformed';
+    $args->{serialized_message} = _freeze($args);
+    $args->{message_length} = length $args->{serialized_message};
+    if($args->{message_length} > $IPC::Transit::max_message_size) {
+        my $s;
+        eval {
+            my $fh;
+            ($fh, $args->{local_filename}) = _get_tmp_file();
+            $s = serialize_wire_meta($args);
+            print $fh "$s$args->{serialized_message}"
+                or die "failed to write to file $args->{local_filename}: $!";
+            close $fh or die "failed to close $args->{local_filename}: $!";
+            chmod 0666, $args->{local_filename};
+        };
+        if($@) {
+            unlink $args->{local_filename};
+            die "IPC::Transit::pack_message: failed: $@";
+        }
+        $args->{serialized_wire_data} = $s;
+        return;
     }
-    $args->{serialized_header} = substr($header_and_message, 0, $length, '');
-    $args->{serialized_message} = $header_and_message;
-    deserialize_wire_meta($args);
-    thaw($args);
-    return $args;
+    my $s = serialize_wire_meta($args);
+    $args->{serialized_wire_data} = "$s$args->{serialized_message}";
+    return;
 }
 
 sub serialize_wire_meta {
@@ -306,46 +473,74 @@ sub serialize_wire_meta {
         }
     }
     chop $s; #no trailing ,
-    $args->{serialized_wire_meta_data} = $s;
+    my $l = length $s;
+    return "$l:$s";
 }
 
 sub deserialize_wire_meta {
-    my $args = shift;
-    my $h = $args->{serialized_header};
+    my $header = shift;
     my $ret = {};
-    foreach my $part (split ',', $h) {
+    foreach my $part (split ',', $header) {
         my ($key, $val) = split '=', $part;
         $ret->{$key} = $val;
     }
-    $args->{wire_headers} = $ret;
+    return $ret;
 }
 
-sub freeze {
+{
+my $encoder;
+sub _freeze {
     my $args = shift;
+    $encoder = Sereal::Encoder->new() unless $encoder;
+    if(not defined $args->{serializer} and $ENV{IPC_TRANSIT_DEFAULT_SERIALIZER}) {
+        $args->{serializer} = $ENV{IPC_TRANSIT_DEFAULT_SERIALIZER};
+    }
     if(not defined $args->{serializer} or $args->{serializer} eq 'json') {
         return encode_json $args->{message};
+    } elsif($args->{serializer} eq 'sereal') {
+        return $encoder->encode($args->{message});
     } elsif($args->{serializer} eq 'dumper') {
         return Data::Dumper::Dumper $args->{message};
     } elsif($args->{serializer} eq 'storable') {
         return Storable::freeze $args->{message};
     } else {
-        die "freeze: undefined serializer: $args->{serializer}";
+        die "_freeze: undefined serializer: $args->{serializer}";
     }
 }
+}
 
-sub thaw {
+sub _thaw {
     my $args = shift;
-    if(not defined $args->{wire_headers}->{s} or $args->{wire_headers}->{s} eq 'json') {
-        return $args->{message} = decode_json($args->{serialized_message});
-    } elsif($args->{wire_headers}->{s} eq 'dumper') {
-        our $VAR1;
-        eval $args->{serialized_message};
-        return $args->{message} = $VAR1;
-    } elsif($args->{wire_headers}->{s} eq 'storable') {
-        return $args->{message} = Storable::thaw($args->{serialized_message});
-    } else {
-        die "thaw: undefined serializer: $args->{wire_headers}->{s}";
+    my $ret = eval {
+        die 'passed serialized_message is falsy'
+            unless $args->{serialized_message};
+        if(not defined $args->{wire_headers}->{s} or $args->{wire_headers}->{s} eq 'sereal') {
+            if(looks_like_sereal($args->{serialized_message})) {
+                return $args->{message} = decode_sereal($args->{serialized_message});
+            } else {
+                return $args->{message} = decode_json($args->{serialized_message});
+            }
+        } elsif($args->{wire_headers}->{s} eq 'json') {
+            return $args->{message} = decode_json($args->{serialized_message});
+        } elsif($args->{wire_headers}->{s} eq 'dumper') {
+            our $VAR1;
+            eval $args->{serialized_message};
+            return $args->{message} = $VAR1;
+        } elsif($args->{wire_headers}->{s} eq 'storable') {
+            return $args->{message} = Storable::thaw($args->{serialized_message});
+        } else {
+            die "undefined serializer: $args->{wire_headers}->{s}";
+        }
+    };
+    my $err = $@;
+    if($err) {
+        if($args->{serialized_message}) {
+            print STDERR "_thaw: failed: $err: $args->{serialized_message}\n";
+        } else {
+            print STDERR "_thaw: failed: $err: <undef>\n";
+        }
     }
+    return $ret;
 }
 1;
 
@@ -357,12 +552,7 @@ IPC::Transit - A framework for high performance message passing
 
 =head1 NOTES
 
-This module is wire incompatable with previous releases.  The wire
-protocol in 0.4 and before was meant as a prototype and naive.
-
-This is the final wire protocol.
-
-The serialization is currently hard-coded to JSON.
+The serialization is currently hard-coded to https://metacpan.org/pod/Sereal
 
 =head1 SYNOPSIS
 
@@ -378,7 +568,7 @@ The serialization is currently hard-coded to JSON.
   IPC::Transit::send(qname => 'test', message => { a => 'b' }, destination => 'some.other.box.com');
 
   #On 'some.other.box.com':
-  remote-transit-gateway &  #run 'incoming' transitd gateway
+  plackup --port 9816 $(which remote-transit-gateway.psgi) &  #run 'incoming' transitd gateway
   my $message = IPC::Transit::receive(qname => 'test');
 
 =head1 DESCRIPTION
@@ -490,7 +680,7 @@ kind of support as long as it doesn't greatly affect the primary goals.
 
 =head1 COPYRIGHT
 
-Copyright (c) 2012, 2013 Dana M. Diederich. All Rights Reserved.
+Copyright (c) 2012, 2013, 2016 Dana M. Diederich. All Rights Reserved.
 
 =head1 LICENSE
 

@@ -25,10 +25,12 @@ clear_test_queue {
 
 sub run_daemon {
     my $prog = shift;
+    print STDERR "\$prog=$prog\n";
     my $pid = fork;
     die "run_daemon: fork failed: $!" if not defined $pid;
     if(not $pid) { #child
-        exec "perl -Ilib bin/$prog -P/tmp/ipc_transit_test";
+        #exec "perl -Ilib bin/$prog -P/tmp/ipc_transit_test";
+        exec $prog;
         exit;
     }
     return $pid;
@@ -36,7 +38,9 @@ sub run_daemon {
 
 sub kill_daemon {
     my $pid = shift;
-    return kill 9, $pid;
+    kill 15, $pid;
+    sleep 1;
+    kill 9, $pid;
 }
 
 

@@ -1,6 +1,6 @@
 package IPC::Transit::Internal;
 
-use strict;
+use strict;use warnings;
 use IPC::SysV;
 use IPC::Msg;
 use POSIX;
@@ -104,6 +104,12 @@ sub _gather_queue_info {
         die 'required key "qname" not found' unless $info->{qname};
         $config->{queues}->{$info->{qname}} = $info;
     }
+}
+
+sub _queue_exists {
+    my $qname = shift;
+    _mk_queue_dir();
+    return $config->{queues}->{$qname};
 }
 
 sub _get_queue_id {
