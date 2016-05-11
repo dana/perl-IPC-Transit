@@ -8,9 +8,12 @@ use Data::Dumper;
 use JSON;
 use Sereal::Encoder;
 use Sereal::Decoder qw(looks_like_sereal decode_sereal);
+use Sys::Hostname;
 use HTTP::Lite;
 use File::Temp qw/tempfile/;
 use Tie::DNS;
+use Crypt::Sodium;
+use MIME::Base64;
 
 use vars qw(
     $config_file $config_dir $large_transit_message_dir
@@ -32,6 +35,8 @@ our $wire_header_arg_translate = {
     message_length => 'l',
     local_filename => 'f',
     ttl => 't',
+    nonce => 'n',
+    source => 'S',
 };
 our $max_message_size = 4096 unless $IPC::Transit::max_message_size;
 
@@ -82,11 +87,15 @@ our $wire_header_args = {
     l => 1, #length of the message itself
     f => 1, #local_filename, optionally a path on the filesystem where the message can be found
     t => 1, #Time To Live
+    #for crypto
+    n => 1, #nonce
+    S => 1, #source
 };
 our $std_args = {
     message => 1,
     qname => 1,
     nowait => 1,
+    encrypt => 1,
 };
 
 sub send {
@@ -108,6 +117,9 @@ sub send {
         if ref $message ne 'HASH';
     $message->{'.ipc_transit_meta'} = {} unless $message->{'.ipc_transit_meta'};
     $message->{'.ipc_transit_meta'}->{send_ts} = time;
+    if($args{encrypt} and not $args{destination}) {
+        die "IPC::Transit::send: parameter 'destination' must exist if encryption is selected";
+    }
     if($args{destination}) {
         #let's take a stab at efficiently getting destination to either an
         #IP address or a FQDN
@@ -281,25 +293,6 @@ sub receive {
         if(not $from_queue->rcv($ref->{serialized_wire_data}, 102400000, 0, $flags)) {
             return undef;
         }
-        #legacy
-        if($ref->{serialized_wire_data} =~ /^file:(.*)/) {
-            my $filename = $1;
-            eval {
-                local $SIG{ALRM} = sub { die "timed out\n"; };
-                alarm 2;
-                open my $fh, '<', $filename
-                    or die "failed to open $filename for reading: $!";
-                read $fh, $ref->{serialized_wire_data}, 102400000
-                    or die "failed to read from $filename: $!";
-                close $fh or die "failed to close $filename: $!";
-            };
-            alarm 0;
-            unlink $filename;
-            if($@) {
-                print STDERR "legacy read from $filename failed: $@";
-                return undef;
-            }
-        }
         if(not defined $ref->{serialized_wire_data}) {
             print STDERR "IPC::Transit::receive: received message had no data";
             return undef;
@@ -321,12 +314,32 @@ sub receive {
             serialized_message => substr(
                 $ref->{serialized_wire_data},
                 $header_length + length($header_length) + 1,
-#                $wire_headers->{l}
-                9999999
+                9999999, # :(
             ),
         };
-        return undef unless _thaw($message);
+        if($message->{wire_headers}->{n}) {
+            #we be encrypted
+            #validate $IPC::Transit::my_keys->{private}
+            #
+            my $source = $message->{wire_headers}->{S};
+            my $public_key = $IPC::Transit::public_keys->{$source};
+            if(not $public_key) {
+                print STDERR "IPC::Transit::receive: received encrypted message had source \$source but no public key was found\n";
+                return undef;
+            }
 
+            my $nonce = decode_base64($message->{wire_headers}->{n});
+            my $cleartext = crypto_box_open(
+                $message->{serialized_message},
+                $nonce,
+                decode_base64($public_key),
+                decode_base64($IPC::Transit::my_keys->{private}),
+            );
+            $message->{serialized_message} = $cleartext;
+        }
+        return undef unless _thaw($message);
+        $message->{message}->{'.ipc_transit_meta'}->{signed_source} =
+            $message->{wire_headers}->{S} if $message->{wire_headers}->{S};
         return $message if $args{raw};
         return $message->{message};
     };
@@ -432,7 +445,40 @@ sub pack_message {
         next if $std_args->{$key};
         $args->{message}->{'.ipc_transit_meta'}->{$key} = $args->{$key};
     }
+    if($args->{encrypt}) {
+        $args->{message}->{'.ipc_transit_meta'}->{destination} = $args->{destination};
+    }
+    if($args->{encrypt}) {
+        my $sender = _get_my_hostname();
+        if(not $sender) {
+            die 'encrypt selected but unable to determine hostname.  Set $IPC::Transit::my_hostname to override';
+        }
+        die "encrypt selected but \$IPC::Transit::my_keys is not set"
+            unless $IPC::Transit::my_keys;
+        die "encrypt selected but \$IPC::Transit::my_keys->{public} is not set"
+            unless $IPC::Transit::my_keys->{public};
+        die "encrypt selected but \$IPC::Transit::my_keys->{private} is not set"
+            unless $IPC::Transit::my_keys->{private};
+        die "encrypt selected but \$IPC::Transit::public_keys is not set"
+            unless $IPC::Transit::public_keys;
+        die "encrypt selected but no public key for destination found in \$IPC::Transit::public_keys"
+            unless $IPC::Transit::public_keys->{$args->{destination}};
+    }
     $args->{serialized_message} = _freeze($args);
+    if($args->{encrypt}) {
+        my $nonce = crypto_box_nonce();
+        $args->{nonce} = encode_base64($nonce);
+
+        my $my_private_key = $IPC::Transit::my_keys->{private};
+        my $cipher_text = crypto_box(
+            $args->{serialized_message},
+            $nonce,
+            decode_base64($IPC::Transit::public_keys->{$args->{destination}}),
+            decode_base64($IPC::Transit::my_keys->{private})
+        );
+        $args->{serialized_message} = $cipher_text;
+        $args->{source} = _get_my_hostname();
+    }
     $args->{message_length} = length $args->{serialized_message};
     if($args->{message_length} > $IPC::Transit::max_message_size) {
         my $s;
@@ -541,6 +587,21 @@ sub _thaw {
         }
     }
     return $ret;
+}
+
+sub gen_key_pair {
+    my ($pk, $sk) = box_keypair();
+    return (encode_base64($pk),encode_base64($sk));
+}
+
+{
+my $hostname;
+sub _get_my_hostname {
+    return $IPC::Transit::my_hostname if $IPC::Transit::my_hostname;
+    return $hostname if $hostname;
+    $hostname = hostname;
+    return $hostname;
+}
 }
 1;
 

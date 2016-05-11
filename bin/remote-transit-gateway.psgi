@@ -6,20 +6,16 @@ use Data::Dumper;
 use Plack::Request;
 use IPC::Transit::Remote;
 
-print STDERR "loading .psgi\n";
-
 $| = 1;
 
 {
 my $done;
 sub set_env {
-    print STDERR "set_env\n";
     return if $done;
     my $env = $ENV{PLACK_ENV};
     if($env and $env eq 'cpan') {
         $done = 1;
         $IPC::Transit::config_dir = '/tmp/ipc_transit_test';
-        print STDERR "\$IPC::Transit::config_dir=$IPC::Transit::config_dir\n";
     } elsif($env and $env eq 'cpan-proxy') {
         $done = 1;
         $IPC::Transit::config_dir = '/tmp/ipc_transit_test';
