@@ -2,7 +2,6 @@
 
 use strict;use warnings;
 
-use lib '../lib';
 use lib 'lib';
 use Test::More;
 use Data::Dumper;
@@ -12,6 +11,7 @@ use_ok('IPC::Transit::Test') or exit;
 
 my ($their_public_key, $their_private_key) = IPC::Transit::gen_key_pair();
 my ($my_public_key, $my_private_key) = IPC::Transit::gen_key_pair();
+my ($another_public_key, undef) = IPC::Transit::gen_key_pair();
 
 undef $IPC::Transit::config_dir;
 undef $IPC::Transit::config_file;
@@ -36,7 +36,8 @@ sleep 2; #let them do their jobs
 $IPC::Transit::my_hostname = '127.0.0.1';
 $IPC::Transit::my_keys->{public} = $their_public_key;
 $IPC::Transit::my_keys->{private} = $their_private_key;
-$IPC::Transit::public_keys->{sender} = $my_public_key;
+#$IPC::Transit::public_keys->{sender} = $my_public_key;
+$IPC::Transit::public_keys->{sender} = [$another_public_key,$my_public_key];
 
 
 ok my $ret = eval {

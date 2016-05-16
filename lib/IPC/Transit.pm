@@ -324,29 +324,46 @@ sub receive {
                 9999999, # :(
             ),
         };
+        my $used_default_public = 1;
         if($message->{wire_headers}->{n}) {
             #we be encrypted
             #validate $IPC::Transit::my_keys->{private}
             #
             my $source = $message->{wire_headers}->{S};
-            my $public_key = $IPC::Transit::public_keys->{$source};
-            if(not $public_key) {
-                print STDERR "IPC::Transit::receive: received encrypted message had source \$source but no public key was found\n";
-                return undef;
+            my $public_key;
+            if($IPC::Transit::public_keys->{$source}) {
+                $public_key = $IPC::Transit::public_keys->{$source};
+                $used_default_public = 0;
+            } else {
+                $public_key = $IPC::Transit::public_keys->{default};
             }
-
+            my $private_key = $IPC::Transit::my_keys->{private};
+            $private_key = $IPC::Transit::my_keys->{default}
+                unless $private_key;
             my $nonce = decode_base64($message->{wire_headers}->{n});
-            my $cleartext = crypto_box_open(
-                $message->{serialized_message},
-                $nonce,
-                decode_base64($public_key),
-                decode_base64($IPC::Transit::my_keys->{private}),
-            );
+            my $public_keys;
+            if(not ref $public_key) {
+                $public_keys = [$public_key];
+            } else {
+                $public_keys = $public_key;
+            }
+            my $cleartext;
+            foreach my $public (@$public_keys) {
+                $cleartext = crypto_box_open(
+                    $message->{serialized_message},
+                    $nonce,
+                    decode_base64($public),
+                    decode_base64($private_key),
+                );
+                last if $cleartext;
+            }
             $message->{serialized_message} = $cleartext;
         }
         return undef unless _thaw($message);
         $message->{message}->{'.ipc_transit_meta'}->{encrypt_source} =
             $message->{wire_headers}->{S} if $message->{wire_headers}->{S};
+        $message->{message}->{'.ipc_transit_meta'}->{encrypt_source} = 'default'
+            if $used_default_public;
         return $message if $args{raw};
         return $message->{message};
     };
@@ -460,31 +477,36 @@ sub pack_message {
         if(not $sender) {
             die 'encrypt selected but unable to determine hostname.  Set $IPC::Transit::my_hostname to override';
         }
-        die "encrypt selected but \$IPC::Transit::my_keys is not set"
-            unless $IPC::Transit::my_keys;
-        die "encrypt selected but \$IPC::Transit::my_keys->{public} is not set"
-            unless $IPC::Transit::my_keys->{public};
-        die "encrypt selected but \$IPC::Transit::my_keys->{private} is not set"
-            unless $IPC::Transit::my_keys->{private};
-        die "encrypt selected but \$IPC::Transit::public_keys is not set"
-            unless $IPC::Transit::public_keys;
-        die "encrypt selected but no public key for destination found in \$IPC::Transit::public_keys"
-            unless $IPC::Transit::public_keys->{$args->{destination}};
     }
-    $args->{serialized_message} = _freeze($args);
     if($args->{encrypt}) {
         my $nonce = crypto_box_nonce();
         $args->{nonce} = encode_base64($nonce);
 
-        my $my_private_key = $IPC::Transit::my_keys->{private};
+        my $my_private_key;
+        if($IPC::Transit::my_keys->{private}) {
+            $my_private_key = $IPC::Transit::my_keys->{private};
+            $args->{message}->{'.ipc_transit_meta'}->{signed_destination} = 'my_private';
+        } else {
+            $my_private_key = $IPC::Transit::my_keys->{default};
+            $args->{message}->{'.ipc_transit_meta'}->{signed_destination} = 'default';
+        }
+        my $their_public_key;
+        if($IPC::Transit::public_keys->{$args->{destination}}) {
+            $their_public_key = $IPC::Transit::public_keys->{$args->{destination}};
+        } else {
+            $their_public_key = $IPC::Transit::public_keys->{default};
+        }
+        $args->{serialized_message} = _freeze($args);
         my $cipher_text = crypto_box(
             $args->{serialized_message},
             $nonce,
-            decode_base64($IPC::Transit::public_keys->{$args->{destination}}),
-            decode_base64($IPC::Transit::my_keys->{private})
+            decode_base64($their_public_key),
+            decode_base64($my_private_key)
         );
         $args->{serialized_message} = $cipher_text;
         $args->{source} = _get_my_hostname();
+    } else {
+        $args->{serialized_message} = _freeze($args);
     }
     $args->{message_length} = length $args->{serialized_message};
     if($args->{message_length} > $IPC::Transit::max_message_size) {
@@ -677,7 +699,7 @@ This queue framework has the following anti-goals:
 
 =head1 FUNCTIONS
 
-=head2 send(qname => 'some_queue', message => $hashref, serializer => 'some serializer')
+=head2 send(qname => 'some_queue', message => $hashref, [destination => $destination, serializer => 'some serializer', crypto => 1 ])
 
 This sends $hashref to 'some_queue'.  some_queue may be on the local
 box, or it may be in the same process space as the caller.
@@ -685,12 +707,19 @@ box, or it may be in the same process space as the caller.
 This call will block until the destination queue has enough space to
 handle the serialized message.
 
-The serialize_with argument is optional, and defaults to Data::Dumper.
-Currently, we are using the module Data::Serializer::Raw; any serialization
-scheme that module supports can be used here.
+The destination argument is optional.  If defined, it is the remote host
+will receive the message.
+
+The serialize argument is optional, and defaults to Sereal.  It is
+over-ridden with the IPC_TRANSIT_DEFAULT_SERIALIZER environmental
+variable.  The following serializers are available:
+
+serial, json, yaml, storable, dumper
 
 NB: there is no need to define the serialization type in receive.  It is
 automatically detected and utilized.
+
+The crypto argument is optional.  See below for details.
 
 =head2 receive(qname => 'some_queue', nonblock => [0|1], override_local => [0|1])
 
@@ -728,15 +757,60 @@ Returns various stats about the passed queue name, per IPC::Msg::stat:
 Return an array of hash references, each containing the information 
 obtained by the stat() call, one entry for each queue on the system.
 
+=head2 CRYPTO
+
+On send(), if the crypto argument is set, IPC::Transit will sign and
+encrypt the message before it is sent.  The necessary configs, including
+relevant keys, are set in some global variables.
+
+See an actual example of this in action under ex/crypto.pl
+
+Please note that this module does not directly assist with the always
+onerous task of key distribution.
+
+=head3 $IPC::Transit::my_hostname
+
+If not set, this defaults to the output of the module Sys::Hostname.
+This value is placed into the message by the sender, and used by the
+receiver to lookup the public key of the sender.
+
+=head3 $IPC::Transit::my_keys
+
+This is a hash reference initially populated, in the attribute 'default',
+with the private half of a default key pair.  For actual secure
+communication, a new key pair must be generated on both sides, and the
+sender's private key needs to be placed here:
+
+  $IPC::Transit::my_keys->{private} = $real_private_key
+
+=head3 $IPC::Transit::public_keys
+
+As above, this is a hash reference initially populated, in the attribute
+'default', with the public half of a default key pair.  For actual secure
+communication, a new key pair must be generated on both sides, and the
+receiver's public key needs to be placed here:
+
+  $IPC::Transit::public_keys->{$receiver_hostname} = $real_public_key_from_receiver
+
+$receiver_hostname must exactly match what is passed into the 'destination'
+field of send().
+
+All of these keys must be base 64 encoded 32 byte primes, as used by
+the Crypto::Sodium package.
+
+=head3 IPC::Transit::gen_key_pair()
+
+This returns a two element array representing a public/privte key pair,
+properly base64 encoded for use in $IPC::Transit::my_keys and
+$IPC::Transit::public_keys
+
 =head1 SEE ALSO
 
 A zillion other queueing systems.
 
 =head1 TODO
 
-Crypto
-
-much else
+Implement nonblock flag for send()
 
 =head1 BUGS
 
@@ -744,7 +818,7 @@ Patches, flames, opinions, enhancement ideas are all welcome.
 
 I am not satisfied with not supporting Windows, but it is considered
 secondary.  I am open to the possibility of adding abstractions for this
-kind of support as long as it doesn't greatly affect the primary goals.
+kind of support as long as it doesn't impact the primary goals.
 
 =head1 COPYRIGHT
 
@@ -758,6 +832,6 @@ and/or modified under the terms of the Perl Artistic License
 
 =head1 AUTHOR
 
-Dana M. Diederich <diederich@gmail.com>
+Dana M. Diederich <dana@realms.org>
 
 =cut

@@ -44,7 +44,7 @@ This queue framework has the following anti-goals:
 
 # FUNCTIONS
 
-## send(qname => 'some\_queue', message => $hashref, serializer => 'some serializer')
+## send(qname => 'some\_queue', message => $hashref, \[destination => $destination, serializer => 'some serializer', crypto => 1 \])
 
 This sends $hashref to 'some\_queue'.  some\_queue may be on the local
 box, or it may be in the same process space as the caller.
@@ -52,12 +52,19 @@ box, or it may be in the same process space as the caller.
 This call will block until the destination queue has enough space to
 handle the serialized message.
 
-The serialize\_with argument is optional, and defaults to Data::Dumper.
-Currently, we are using the module Data::Serializer::Raw; any serialization
-scheme that module supports can be used here.
+The destination argument is optional.  If defined, it is the remote host
+will receive the message.
+
+The serialize argument is optional, and defaults to Sereal.  It is
+over-ridden with the IPC\_TRANSIT\_DEFAULT\_SERIALIZER environmental
+variable.  The following serializers are available:
+
+serial, json, yaml, storable, dumper
 
 NB: there is no need to define the serialization type in receive.  It is
 automatically detected and utilized.
+
+The crypto argument is optional.  See below for details.
 
 ## receive(qname => 'some\_queue', nonblock => \[0|1\], override\_local => \[0|1\])
 
@@ -94,15 +101,60 @@ Returns various stats about the passed queue name, per IPC::Msg::stat:
 Return an array of hash references, each containing the information 
 obtained by the stat() call, one entry for each queue on the system.
 
+## CRYPTO
+
+On send(), if the crypto argument is set, IPC::Transit will sign and
+encrypt the message before it is sent.  The necessary configs, including
+relevant keys, are set in some global variables.
+
+See an actual example of this in action under ex/crypto.pl
+
+Please note that this module does not directly assist with the always
+onerous task of key distribution.
+
+### $IPC::Transit::my\_hostname
+
+If not set, this defaults to the output of the module Sys::Hostname.
+This value is placed into the message by the sender, and used by the
+receiver to lookup the public key of the sender.
+
+### $IPC::Transit::my\_keys
+
+This is a hash reference initially populated, in the attribute 'default',
+with the private half of a default key pair.  For actual secure
+communication, a new key pair must be generated on both sides, and the
+sender's private key needs to be placed here:
+
+    $IPC::Transit::my_keys->{private} = $real_private_key
+
+### $IPC::Transit::public\_keys
+
+As above, this is a hash reference initially populated, in the attribute
+'default', with the public half of a default key pair.  For actual secure
+communication, a new key pair must be generated on both sides, and the
+receiver's public key needs to be placed here:
+
+    $IPC::Transit::public_keys->{$receiver_hostname} = $real_public_key_from_receiver
+
+$receiver\_hostname must exactly match what is passed into the 'destination'
+field of send().
+
+All of these keys must be base 64 encoded 32 byte primes, as used by
+the Crypto::Sodium package.
+
+### IPC::Transit::gen\_key\_pair()
+
+This returns a two element array representing a public/privte key pair,
+properly base64 encoded for use in $IPC::Transit::my\_keys and
+$IPC::Transit::public\_keys
+
 # SEE ALSO
 
 A zillion other queueing systems.
 
 # TODO
 
-Crypto
-
-much else
+Implement nonblock flag for send()
 
 # BUGS
 
@@ -110,7 +162,7 @@ Patches, flames, opinions, enhancement ideas are all welcome.
 
 I am not satisfied with not supporting Windows, but it is considered
 secondary.  I am open to the possibility of adding abstractions for this
-kind of support as long as it doesn't greatly affect the primary goals.
+kind of support as long as it doesn't impact the primary goals.
 
 # COPYRIGHT
 
@@ -124,4 +176,5 @@ and/or modified under the terms of the Perl Artistic License
 
 # AUTHOR
 
-Dana M. Diederich <diederich@gmail.com>
+Dana M. Diederich <dana@realms.org>
+
