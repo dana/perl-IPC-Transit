@@ -34,13 +34,9 @@ sleep 2; #let them do their jobs
 
 #the following global assignments are to represent the receiving box
 $IPC::Transit::my_hostname = '127.0.0.1';
-$IPC::Transit::my_keys = {
-    public => $their_public_key,
-    private => $their_private_key,
-};
-$IPC::Transit::public_keys = {
-    sender => $my_public_key,
-};
+$IPC::Transit::my_keys->{public} = $their_public_key;
+$IPC::Transit::my_keys->{private} = $their_private_key;
+$IPC::Transit::public_keys->{sender} = $my_public_key;
 
 
 ok my $ret = IPC::Transit::receive(qname => $IPC::Transit::test_qname);
