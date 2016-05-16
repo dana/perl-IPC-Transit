@@ -43,8 +43,9 @@ ok my $ret = IPC::Transit::receive(qname => $IPC::Transit::test_qname);
 ok $ret->{foo}, 'foo properly exists';
 ok $ret->{foo} eq 'bar', 'foo properly equals bar';
 ok $ret->{'.ipc_transit_meta'}, '.ipc_transit_meta properly exists';
-ok $ret->{'.ipc_transit_meta'}->{signed_source}, 'signed_source in .ipc_transit_meta properly exists';
-ok $ret->{'.ipc_transit_meta'}->{signed_source} eq 'sender', 'signed_source in .ipc_transit_meta properly is set to sender';
+ok $ret->{'.ipc_transit_meta'}->{encrypt_source}, 'encrypt_source in .ipc_transit_meta properly exists';
+ok $ret->{'.ipc_transit_meta'}->{encrypt_source} eq 'sender', 'encrypt_source in .ipc_transit_meta properly is set to sender';
+ok $ret->{'.ipc_transit_meta'}->{signed_destination} eq 'my_private', 'signed_destination in .ipc_transit_meta properly is set to my_private';
 
 ok IPC::Transit::Test::kill_daemon($transitd_pid);
 ok IPC::Transit::Test::kill_daemon($transit_gateway_pid);

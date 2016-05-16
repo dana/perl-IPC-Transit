@@ -345,7 +345,7 @@ sub receive {
             $message->{serialized_message} = $cleartext;
         }
         return undef unless _thaw($message);
-        $message->{message}->{'.ipc_transit_meta'}->{signed_source} =
+        $message->{message}->{'.ipc_transit_meta'}->{encrypt_source} =
             $message->{wire_headers}->{S} if $message->{wire_headers}->{S};
         return $message if $args{raw};
         return $message->{message};
