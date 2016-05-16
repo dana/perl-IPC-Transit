@@ -20,6 +20,13 @@ use vars qw(
     $local_queues
 );
 
+$IPC::Transit::my_keys = {
+    default => 'ftlMCefNymrF66r2VlFBgHYbWRZqSJPzVg4Vz/I86UQ='
+};
+$IPC::Transit::public_keys = {
+    default => 'vbqcxUUGIOvIKzpFWyBbYrSTsmSGj+/zlkF9H3tJ0DI='
+};
+
 our $large_transit_message_dir = '/tmp/transit_large_messages'
     unless $IPC::Transit::large_transit_message_dir;
 
