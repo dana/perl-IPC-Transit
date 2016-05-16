@@ -20,13 +20,9 @@ undef $IPC::Transit::config_file;
 
 #the following global assignments are to represent the sending box
 $IPC::Transit::my_hostname = 'sender';
-$IPC::Transit::my_keys = {
-    public => $my_public_key,
-    private => $my_private_key,
-};
-$IPC::Transit::public_keys = {
-    '127.0.0.1' => $their_public_key
-};
+$IPC::Transit::my_keys->{public} = $my_public_key;
+$IPC::Transit::my_keys->{private} = $my_private_key;
+$IPC::Transit::public_keys->{'127.0.0.1'} = $their_public_key;
 
 
 ok my $transitd_pid = IPC::Transit::Test::run_daemon('perl bin/remote-transitd');
