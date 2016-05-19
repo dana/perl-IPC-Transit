@@ -1,4 +1,5 @@
 {{$NEXT}}
+    - Full encryption/signing implemented.  See perldoc IPC::Transit
 
 1.161300  2016-05-09 16:18:28-07:00 America/Los_Angeles
     - Apologies in advance for a big increase in dependencies.
