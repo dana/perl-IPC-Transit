@@ -472,6 +472,7 @@ sub pack_message {
     if($args->{encrypt}) {
         $args->{message}->{'.ipc_transit_meta'}->{destination} = $args->{destination};
     }
+    $args->{message}->{'.ipc_transit_meta'}->{source_hostname} = _get_my_hostname();
     if($args->{encrypt}) {
         my $sender = _get_my_hostname();
         if(not $sender) {

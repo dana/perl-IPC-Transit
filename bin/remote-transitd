@@ -5,6 +5,7 @@ use IPC::Transit;
 use IPC::Transit::Remote;
 use Data::Dumper;
 use Getopt::Std;
+use Sys::Hostname;
 
 $| = 1;
 
@@ -33,6 +34,14 @@ $| = 1;
                 $ret->{$_} = 1;
             }
             $ret->{'127.0.0.1'} = 1;
+            {   my $hostname = 1;
+                $ret->{$hostname} = 1;
+            }
+            $ENV{PATH}="/bin:$ENV{PATH}" unless $ENV{PATH} =~ m|/bin|;
+            {   my $fqdn = `hostname --fqdn`;
+                chomp $fqdn;
+                $ret->{$fqdn} = 1;
+            }
             return $ret;
         };
 
