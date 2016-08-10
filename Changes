@@ -1,4 +1,7 @@
 {{$NEXT}}
+    - Support multiple public keys for crypto.
+    - Automatic default hostname detection for key identification.
+    - Lexically sort JSON keys of rtrans output.
 
 1.161400  2016-05-19 15:44:57-07:00 America/Los_Angeles
     - Full encryption/signing implemented.  See perldoc IPC::Transit
