@@ -1,5 +1,5 @@
 package IPC::Transit;
-
+$IPC::Transit::VERSION = '1.161450';
 use strict;use warnings;
 use 5.006;
 use IPC::Transit::Internal;
@@ -337,9 +337,9 @@ sub receive {
             } else {
                 $public_key = $IPC::Transit::public_keys->{default};
             }
-            my $private_key = $IPC::Transit::my_keys->{private};
-            $private_key = $IPC::Transit::my_keys->{default}
-                unless $private_key;
+            my @private_keys = ($IPC::Transit::my_keys->{default});
+            push @private_keys, $IPC::Transit::my_keys->{private}
+                if $IPC::Transit::my_keys->{private};
             my $nonce = decode_base64($message->{wire_headers}->{n});
             my $public_keys;
             if(not ref $public_key) {
@@ -347,15 +347,19 @@ sub receive {
             } else {
                 $public_keys = $public_key;
             }
+            push @$public_keys, $IPC::Transit::public_keys->{default};
             my $cleartext;
+            PUBLIC:
             foreach my $public (@$public_keys) {
-                $cleartext = crypto_box_open(
-                    $message->{serialized_message},
-                    $nonce,
-                    decode_base64($public),
-                    decode_base64($private_key),
-                );
-                last if $cleartext;
+                foreach my $private_key (@private_keys) {
+                    $cleartext = crypto_box_open(
+                        $message->{serialized_message},
+                        $nonce,
+                        decode_base64($public),
+                        decode_base64($private_key),
+                    );
+                    last PUBLIC if $cleartext;
+                }
             }
             $message->{serialized_message} = $cleartext;
         }
@@ -629,7 +633,13 @@ my $hostname;
 sub _get_my_hostname {
     return $IPC::Transit::my_hostname if $IPC::Transit::my_hostname;
     return $hostname if $hostname;
-    $hostname = hostname;
+    {   my $ret = `hostname -f 2> /dev/null`;
+        chomp $ret;
+        if(length($ret) > 5) {
+            $hostname = $ret;
+        }
+    }
+    $hostname = hostname unless $hostname;
     return $hostname;
 }
 }

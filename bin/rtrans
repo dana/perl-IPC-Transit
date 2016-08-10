@@ -6,6 +6,8 @@ use Data::Dumper;
 use Getopt::Std;
 use JSON;
 
+$| = 1;
+
 my $opts = {};
 getopts('srP:c:', $opts);
 if($opts->{P}) {
@@ -24,10 +26,10 @@ while(1) {
     eval {
         if($opts->{r}) {
             my $m = IPC::Transit::receive(qname => $qname, raw => 1);
-            print JSON->new->pretty->encode($m);
+            print JSON->new->canonical(1)->pretty->encode($m);
         } else {
             my $m = IPC::Transit::receive(qname => $qname);
-            print JSON->new->pretty->encode($m);
+            print JSON->new->canonical(1)->pretty->encode($m);
         }
     };
     print STDERR "Exception: $@" if $@;
