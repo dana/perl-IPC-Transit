@@ -176,4 +176,4 @@ and/or modified under the terms of the Perl Artistic License
 
 # AUTHOR
 
-Dana M. Diederich <dana@realms.org>
+Dana M. Diederich &lt;dana@realms.org>
